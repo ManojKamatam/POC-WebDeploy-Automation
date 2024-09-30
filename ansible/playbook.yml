@@ -9,7 +9,7 @@
 
     - name: Download WebDeploy Installer
       win_get_url:
-        url: "https://www.microsoft.com/en-us/download/details.aspx?id=106070"
+        url: "https://www.microsoft.com/en-us/download/details.aspx?id=106070/WebDeploy_x64_en-US.msi"
         dest: "C:\\temp\\WebDeploy_x64.msi"
 
     - name: Install WebDeploy
