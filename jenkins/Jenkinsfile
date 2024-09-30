@@ -4,8 +4,8 @@ pipeline {
     environment {
         S3_BUCKET = 'my-s3-bucket-for-jenkins-pipeline-setup'
         S3_KEY = 'my-app.zip'
-        ENVIRONMENT_NAME = 'test-env-env'
-        APPLICATION_NAME = 'test-env'
+        ENVIRONMENT_NAME = 'POC-Jenkins-env'
+        APPLICATION_NAME = 'POC-Jenkins'
         AWS_REGION = 'us-east-1'
         SECRET_NAME = 'secret-jenkins-access'
         VERSION_LABEL = "app-version-${BUILD_NUMBER}"
