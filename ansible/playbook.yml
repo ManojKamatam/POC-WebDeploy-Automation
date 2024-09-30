@@ -33,11 +33,6 @@
         name: Default Web Site
         state: started
 
-    - name: Clean up installer
-      win_file:
-        path: 'C:\\temp\\WebDeploy_x64.msi'
-        state: absent
-
     - name: Restart IIS to apply changes
       win_service:
         name: W3SVC
