@@ -1,0 +1,30 @@
+- name: Configure Windows EC2 Instances in Elastic Beanstalk
+  hosts: windows
+  tasks:
+    - name: Download WebDeploy Installer
+      win_get_url:
+        url: "https://download.microsoft.com/download/9/F/4/9F4561F8-3342-43FB-82FE-FB0FC99E7D89/WebDeploy_x64_en-US.msi"
+        dest: "C:\\temp\\WebDeploy_x64.msi"
+
+    - name: Install WebDeploy
+      win_package:
+        path: 'C:\\temp\\WebDeploy_x64.msi'
+        state: present
+        arguments: '/quiet'
+    - name: Add login.aspx to Default Documents
+      win_iis_webapplication:
+        name: Default Web Site
+        site: Default Web Site
+        state: started
+        path: /
+        application_pool: DefaultAppPool
+        default_documents:
+          - login.aspx
+    - name: Clean up installer
+      win_file:
+        path: 'C:\\temp\\WebDeploy_x64.msi'
+        state: absent
+    - name: Restart IIS to apply changes
+      win_service:
+        name: W3SVC
+        state: restarted
