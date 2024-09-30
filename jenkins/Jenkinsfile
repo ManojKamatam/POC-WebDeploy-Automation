@@ -28,8 +28,8 @@ pipeline {
             steps {
                 script {
                     ansiblePlaybook(
-                        playbook: 'path/to/your/playbook.yml',
-                        inventory: 'path/to/your/inventory.ini',
+                        playbook: 'ansible/playbook.yml',
+                        inventory: 'ansible/inventory.ini',
                         extraVars: [
                             application_name: "${APPLICATION_NAME}",
                             environment_name: "${ENVIRONMENT_NAME}",
