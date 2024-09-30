@@ -30,8 +30,11 @@ pipeline {
                     ansiblePlaybook(
                         playbook: 'path/to/your/playbook.yml',
                         inventory: 'path/to/your/inventory.ini',
-                        credentialsId: 'ansible-credentials-id', // Use Jenkins credentials for Ansible
-                        extras: '--extra-vars "application_name=${APPLICATION_NAME} environment_name=${ENVIRONMENT_NAME} region=${AWS_REGION}"'
+                        extraVars: [
+                            application_name: "${APPLICATION_NAME}",
+                            environment_name: "${ENVIRONMENT_NAME}",
+                            region: "${AWS_REGION}"
+                        ]
                     )
                 }
             }
