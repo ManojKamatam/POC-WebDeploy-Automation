@@ -22,11 +22,16 @@
       win_iis_webapplication:
         name: Default Web Site
         site: Default Web Site
-        state: started
+        state: present
         path: /
         application_pool: DefaultAppPool
         default_documents:
           - login.aspx
+
+    - name: Ensure Default Web Site is running
+      win_iis_website:
+        name: Default Web Site
+        state: started
 
     - name: Clean up installer
       win_file:
