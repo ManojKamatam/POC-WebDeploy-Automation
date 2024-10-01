@@ -78,19 +78,19 @@
 
     - name: Create a Self-Signed Certificate
       win_shell: |
-        New-SelfSignedCertificate -DnsName 'http://poc-jenkins-env.eba-ad3eyghs.us-east-1.elasticbeanstalk.com/' -CertStoreLocation Cert:\LocalMachine\My
+        New-SelfSignedCertificate -DnsName 'ec2-52-44-236-121.compute-1.amazonaws.com' -CertStoreLocation Cert:\LocalMachine\My
 
     - name: Bind SSL Certificate to Default Web Site
       win_shell: |
       Import-Module WebAdministration
-      $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'http://poc-jenkins-env.eba-ad3eyghs.us-east-1.elasticbeanstalk.com/' }
+      $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'ec2-52-44-236-121.compute-1.amazonaws.com' }
       if ($cert) {
         # Use the correct format for binding information (IP:Port:Hostname)
-        New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -IPAddress '*' -HostHeader 'http://poc-jenkins-env.eba-ad3eyghs.us-east-1.elasticbeanstalk.com/' -SslFlags 1
+        New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -IPAddress '*' -HostHeader 'ec2-52-44-236-121.compute-1.amazonaws.com' -SslFlags 1
         Set-ItemProperty -Path 'IIS:\SslBindings\0.0.0.0!443' -Name SslCertificateStoreName -Value 'My'
         Set-ItemProperty -Path 'IIS:\SslBindings\0.0.0.0!443' -Name SslCertificateHash -Value $cert.Thumbprint
       } else {
-        Write-Host "SSL certificate not found for 'http://poc-jenkins-env.eba-ad3eyghs.us-east-1.elasticbeanstalk.com/'."
+        Write-Host "SSL certificate not found for 'ec2-52-44-236-121.compute-1.amazonaws.com'."
       }
 
     - name: Set IIS Authentication to Windows Authentication
