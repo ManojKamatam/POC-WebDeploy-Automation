@@ -53,15 +53,14 @@
         } else {
           New-SelfSignedCertificate -DnsName 'localhost' -CertStoreLocation Cert:\LocalMachine\My -FriendlyName 'MySelfSignedCert'
           Write-Host "Self-signed certificate created."
-          }
 
     - name: Restart IIS to apply certificate changes
       win_service:
         name: W3SVC
         state: restarted
 
-    # Replace win_iis_app_pool with PowerShell to manage the app pool
-    - name: Ensure IIS AppPool 'DefaultAppPool' is started (Fallback using PowerShell)
+    # PowerShell to manage the DefaultAppPool
+    - name: Ensure IIS AppPool 'DefaultAppPool' is started
       win_shell: |
         Import-Module WebAdministration
         $appPoolState = Get-WebAppPoolState -Name 'DefaultAppPool'
@@ -70,7 +69,6 @@
           Write-Host "App Pool started."
         } else {
           Write-Host "App Pool is already running."
-        }
 
     - name: Stop IIS Management Service before identity change
       win_service:
