@@ -85,8 +85,8 @@
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
         if ($cert) {
-          # Use the 'localhost' as the Hostname
-          New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -IPAddress '*' -HostHeader 'localhost' -SslFlags 0
+          # Use the correct binding format IP:Port:Hostname
+          New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -IPAddress '0.0.0.0' -HostHeader 'localhost' -SslFlags 1
           Set-ItemProperty -Path 'IIS:\SslBindings\0.0.0.0!443' -Name SslCertificateStoreName -Value 'My'
           Set-ItemProperty -Path 'IIS:\SslBindings\0.0.0.0!443' -Name SslCertificateHash -Value $cert.Thumbprint
         } else {
