@@ -2,34 +2,41 @@
 - name: Configure Windows EC2 Instances in Elastic Beanstalk
   hosts: windows
   tasks:
+
+    # Ensure C:\temp directory exists
     - name: Ensure C:\temp directory exists
       win_file:
         path: 'C:\temp'
         state: directory
 
+    # Download WebDeploy Installer
     - name: Download WebDeploy Installer
       win_get_url:
         url: "https://my-s3-bucket-for-jenkins-pipeline-setup.s3.amazonaws.com/webdeploy_amd64_en-US.msi"
         dest: "C:\\temp\\WebDeploy_x64.msi"
 
+    # Install WebDeploy
     - name: Install WebDeploy
       win_package:
         path: 'C:\\temp\\WebDeploy_x64.msi'
         state: present
         arguments: '/quiet'
 
+    # Create WebDeploy Admin User
     - name: Create WebDeploy Admin User
       win_user:
         name: "webdeployadmin"
         password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
         state: present
 
+    # Add WebDeploy Admin to Administrators Group
     - name: Add WebDeploy Admin to Administrators Group
       win_group_membership:
         name: Administrators
         members: webdeployadmin
         state: present
 
+    # Ensure login.aspx is added to Default Documents
     - name: Ensure login.aspx is added to Default Documents
       win_shell: |
         Import-Module WebAdministration
@@ -44,6 +51,7 @@
           }
         }
 
+    # Check if a self-signed certificate already exists
     - name: Check if a self-signed certificate already exists
       win_shell: |
         Import-Module WebAdministration
@@ -53,24 +61,45 @@
         } else {
           New-SelfSignedCertificate -DnsName 'localhost' -CertStoreLocation Cert:\LocalMachine\My -FriendlyName 'MySelfSignedCert'
           Write-Host "Self-signed certificate created."
-          }
 
+    # Restart IIS to apply certificate changes
     - name: Restart IIS to apply certificate changes
       win_service:
         name: W3SVC
         state: restarted
 
+    # Ensure Default Website is started
+    - name: Ensure Default Website is started
+      win_iis_website:
+        name: "Default Web Site"
+        state: started
+
+    # Ensure IIS AppPool 'DefaultAppPool' is started
+    - name: Ensure DefaultAppPool is started
+      win_iis_app_pool:
+        name: 'DefaultAppPool'
+        state: started
+
+    # Stop IIS Management Service before identity change
     - name: Stop IIS Management Service before identity change
       win_service:
         name: WMSVC
         state: stopped
 
+    # Change IIS Management Service identity to Windows/IIS Management credentials
     - name: Change IIS Management Service identity to Windows/IIS Management credentials
       win_shell: |
         Import-Module WebAdministration
         Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/ftpServer/security/authentication/anonymousAuthentication" -name "identity" -value "IIS_IUSRS"
 
+    # Start IIS Management Service after identity change
     - name: Start IIS Management Service after identity change
       win_service:
         name: WMSVC
         state: started
+
+    # Restart IIS to apply changes again
+    - name: Restart IIS to ensure all services are running
+      win_service:
+        name: W3SVC
+        state: restarted
