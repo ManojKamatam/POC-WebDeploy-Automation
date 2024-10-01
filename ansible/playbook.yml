@@ -82,11 +82,16 @@
 
     - name: Bind SSL Certificate to Default Web Site
       win_shell: |
-        Import-Module WebAdministration
-        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'yourdomain.com' }
-        New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 1
-        Set-ItemProperty IIS:\SslBindings\0.0.0.0!443 -name SslCertificateStoreName -value 'My'
-        Set-ItemProperty IIS:\SslBindings\0.0.0.0!443 -name SslCertificateHash -value $cert.Thumbprint
+      Import-Module WebAdministration
+      $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'yourdomain.com' }
+      if ($cert) {
+        # Use the correct format for binding information (IP:Port:Hostname)
+        New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -IPAddress '*' -HostHeader 'office-deployment.com' -SslFlags 1
+        Set-ItemProperty -Path 'IIS:\SslBindings\0.0.0.0!443' -Name SslCertificateStoreName -Value 'My'
+        Set-ItemProperty -Path 'IIS:\SslBindings\0.0.0.0!443' -Name SslCertificateHash -Value $cert.Thumbprint
+      } else {
+        Write-Host "SSL certificate not found for 'yourdomain.com'."
+      }
 
     - name: Set IIS Authentication to Windows Authentication
       win_shell: |
