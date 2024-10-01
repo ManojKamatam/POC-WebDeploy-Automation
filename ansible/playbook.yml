@@ -24,12 +24,6 @@
         password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
         state: present
 
-    - name: Create WebDeploy Config Writer User
-      win_user:
-        name: "webdeployconfigwriter"
-        password: "{{ lookup('env', 'WEBDEPLOYCONFIGWRITER_PASSWORD') }}"
-        state: present
-
     - name: Add WebDeploy Admin to Administrators Group
       win_group_membership:
         name: Administrators
