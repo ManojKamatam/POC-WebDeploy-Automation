@@ -1,88 +1,89 @@
-pipeline {
-    agent any
+---
+- name: Configure Windows EC2 Instances in Elastic Beanstalk
+  hosts: windows
+  tasks:
+    - name: Ensure C:\temp directory exists
+      win_file:
+        path: 'C:\temp'
+        state: directory
 
-    environment {
-        S3_BUCKET = 'my-s3-bucket-for-jenkins-pipeline-setup'
-        S3_KEY = 'my-app.zip'
-        ENVIRONMENT_NAME = 'POC-Jenkins-env'
-        APPLICATION_NAME = 'POC-Jenkins'
-        AWS_REGION = 'us-east-1'
-        SECRET_NAME = 'secret-jenkins-access'
-        VERSION_LABEL = "app-version-${BUILD_NUMBER}"
+    - name: Download WebDeploy Installer
+      win_get_url:
+        url: "https://my-s3-bucket-for-jenkins-pipeline-setup.s3.amazonaws.com/webdeploy_amd64_en-US.msi"
+        dest: "C:\\temp\\WebDeploy_x64.msi"
 
-        // Use Jenkins Credentials Plugin to securely retrieve these passwords
-        WEBDEPLOYADMIN_PASSWORD = credentials('WDeployAdmin')
-        WEBDEPLOYCONFIGWRITER_PASSWORD = credentials('WDeployAdmin')
-    }
+    - name: Install WebDeploy
+      win_package:
+        path: 'C:\\temp\\WebDeploy_x64.msi'
+        state: present
+        arguments: '/quiet'
 
-    stages {
-        stage('Retrieve AWS Credentials from Secrets Manager') {
-            steps {
-                script {
-                    def secretValue = sh(script: "aws secretsmanager get-secret-value --secret-id ${SECRET_NAME} --query 'SecretString' --output text --region ${AWS_REGION}", returnStdout: true).trim()
-                    def jsonSlurper = new groovy.json.JsonSlurper()
-                    def credentials = jsonSlurper.parseText(secretValue)
-                    env.AWS_ACCESS_KEY_ID = credentials.keySet().iterator().next()
-                    env.AWS_SECRET_ACCESS_KEY = credentials[env.AWS_ACCESS_KEY_ID]
-                }
-            }
+    - name: Create WebDeploy Admin User
+      win_user:
+        name: "webdeployadmin"
+        password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+        state: present
+
+    - name: Create WebDeploy Config Writer User
+      win_user:
+        name: "webdeployconfigwriter"
+        password: "{{ lookup('env', 'WEBDEPLOYCONFIGWRITER_PASSWORD') }}"
+        state: present
+
+    - name: Add WebDeploy Admin to Administrators Group
+      win_group_membership:
+        name: Administrators
+        members: webdeployadmin
+        state: present
+
+    - name: Restart Web Management Service (WMSVC)
+      win_service:
+        name: WMSVC
+        state: restarted
+
+    - name: Ensure login.aspx is added to Default Documents
+      win_shell: |
+        Import-Module WebAdministration
+        $site = Get-Website -Name 'Default Web Site'
+        if ($site) {
+          if (-not ($site.DefaultDocuments | Where-Object { $_ -eq 'login.aspx' })) {
+            Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'} -location 'Default Web Site'
+          }
         }
 
-        stage('Configure IIS and WebDeploy') {
-            steps {
-                script {
-                    ansiblePlaybook(
-                        playbook: 'ansible/playbook.yml',
-                        inventory: 'ansible/inventory.ini',
-                        extraVars: [
-                            application_name: "${APPLICATION_NAME}",
-                            environment_name: "${ENVIRONMENT_NAME}",
-                            region: "${AWS_REGION}",
-                            WEBDEPLOYADMIN_PASSWORD: "${WEBDEPLOYADMIN_PASSWORD}",
-                            WEBDEPLOYCONFIGWRITER_PASSWORD: "${WEBDEPLOYCONFIGWRITER_PASSWORD}"
-                        ]
-                    )
-                }
-            }
-        }
+    - name: Ensure Default Web Site is running
+      win_iis_website:
+        name: Default Web Site
+        state: started
 
-        stage('Upload to S3') {
-            steps {
-                sh "aws s3 cp application.zip s3://${S3_BUCKET}/${S3_KEY} --region ${AWS_REGION}"
-            }
-        }
+    - name: Restart DefaultAppPool
+      win_iis_apppool:
+        name: DefaultAppPool
+        state: started
 
-        stage('Create Application Version') {
-            steps {
-                sh """
-                    aws elasticbeanstalk create-application-version \
-                    --application-name ${APPLICATION_NAME} \
-                    --version-label ${VERSION_LABEL} \
-                    --source-bundle S3Bucket=${S3_BUCKET},S3Key=${S3_KEY} \
-                    --region ${AWS_REGION}
-                """
-            }
-        }
+    - name: Clean up installer
+      win_file:
+        path: 'C:\\temp\\WebDeploy_x64.msi'
+        state: absent
 
-        stage('Deploy Application') {
-            steps {
-                sh """
-                    aws elasticbeanstalk update-environment \
-                      --application-name ${APPLICATION_NAME} \
-                      --environment-name ${ENVIRONMENT_NAME} \
-                      --version-label ${VERSION_LABEL} \
-                      --region ${AWS_REGION}
-                """
-            }
-        }
-    }
+    - name: Restart IIS to apply changes
+      win_service:
+        name: W3SVC
+        state: restarted
 
-    post {
-        success {
-            echo 'Deployment process completed successfully.'
-        }
-        failure {
-            echo 'Deployment process failed. Please check the logs for more details.'
-        }
-    }
-}
+    - name: Create a Self-Signed Certificate
+      win_shell: |
+        New-SelfSignedCertificate -DnsName 'yourdomain.com' -CertStoreLocation Cert:\LocalMachine\My
+
+    - name: Bind SSL Certificate to Default Web Site
+      win_shell: |
+        Import-Module WebAdministration
+        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'yourdomain.com' }
+        New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 1
+        Set-ItemProperty IIS:\SslBindings\0.0.0.0!443 -name SslCertificateStoreName -value 'My'
+        Set-ItemProperty IIS:\SslBindings\0.0.0.0!443 -name SslCertificateHash -value $cert.Thumbprint
+
+    - name: Set IIS Authentication to Windows Authentication
+      win_shell: |
+        Import-Module WebAdministration
+        Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/windowsAuthentication" -Name "enabled" -Value "True" -PSPath "IIS:\Sites\Default Web Site"
