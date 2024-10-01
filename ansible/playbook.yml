@@ -53,6 +53,7 @@
         } else {
           New-SelfSignedCertificate -DnsName 'localhost' -CertStoreLocation Cert:\LocalMachine\My -FriendlyName 'MySelfSignedCert'
           Write-Host "Self-signed certificate created."
+          }
 
     - name: Restart IIS to apply certificate changes
       win_service:
