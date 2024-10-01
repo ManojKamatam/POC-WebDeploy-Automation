@@ -54,19 +54,6 @@
           New-SelfSignedCertificate -DnsName 'localhost' -CertStoreLocation Cert:\LocalMachine\My -FriendlyName 'MySelfSignedCert'
           Write-Host "Self-signed certificate created."
 
-    - name: Assign the Self-Signed Certificate to IIS
-      win_shell: |
-        Import-Module WebAdministration
-        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
-        if ($cert) {
-          New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 0
-          Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateHash -Value $cert.Thumbprint
-          Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateStoreName -Value 'My'
-          Write-Host "Assigned certificate to the site binding."
-        } else {
-          Write-Host "Self-signed certificate not found."
-        }
-
     - name: Restart IIS to apply certificate changes
       win_service:
         name: W3SVC
