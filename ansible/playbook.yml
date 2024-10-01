@@ -18,15 +18,28 @@
         state: present
         arguments: '/quiet'
 
+    - name: Create WebDeploy Admin User
+      win_user:
+        name: "webdeployadmin"
+        password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+        state: present
+
+    - name: Create WebDeploy Config Writer User
+      win_user:
+        name: "webdeployconfigwriter"
+        password: "{{ lookup('env', 'WEBDEPLOYCONFIGWRITER_PASSWORD') }}"
+        state: present
+
+    - name: Add WebDeploy Admin to Administrators Group
+      win_group_membership:
+        name: Administrators
+        members: webdeployadmin
+        state: present
+
     - name: Restart Web Management Service (WMSVC)
       win_service:
         name: WMSVC
         state: restarted
-
-    - name: Ensure Default Web Site exists and is running
-      win_iis_website:
-        name: 'Default Web Site'
-        state: started
 
     - name: Ensure login.aspx is added to Default Documents
       win_shell: |
@@ -38,7 +51,34 @@
           }
         }
 
+    - name: Ensure Default Web Site is running
+      win_iis_website:
+        name: Default Web Site
+        state: started
+
+    - name: Restart DefaultAppPool
+      win_iis_apppool:
+        name: DefaultAppPool
+        state: started
+
     - name: Restart IIS to apply changes
       win_service:
         name: W3SVC
         state: restarted
+
+    - name: Create a Self-Signed Certificate
+      win_shell: |
+        New-SelfSignedCertificate -DnsName 'yourdomain.com' -CertStoreLocation Cert:\LocalMachine\My
+
+    - name: Bind SSL Certificate to Default Web Site
+      win_shell: |
+        Import-Module WebAdministration
+        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'yourdomain.com' }
+        New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 1
+        Set-ItemProperty IIS:\SslBindings\0.0.0.0!443 -name SslCertificateStoreName -value 'My'
+        Set-ItemProperty IIS:\SslBindings\0.0.0.0!443 -name SslCertificateHash -value $cert.Thumbprint
+
+    - name: Set IIS Authentication to Windows Authentication
+      win_shell: |
+        Import-Module WebAdministration
+        Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/windowsAuthentication" -Name "enabled" -Value "True" -PSPath "IIS:\Sites\Default Web Site"
