@@ -18,13 +18,15 @@
         state: present
         arguments: '/quiet'
 
-    - name: Add login.aspx to Default Documents
-      win_iis_webapplication:
+    - name: Restart Web Management Service (WMSVC)
+      win_service:
+        name: WMSVC
+        state: restarted
+
+    - name: Add login.aspx to Default Documents at Website Level
+      win_iis_website:
         name: Default Web Site
-        site: Default Web Site
-        state: present
-        path: /
-        application_pool: DefaultAppPool
+        state: started
         default_documents:
           - login.aspx
 
