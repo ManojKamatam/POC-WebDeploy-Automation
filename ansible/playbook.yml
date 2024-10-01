@@ -54,10 +54,17 @@
         name: Default Web Site
         state: started
 
-    - name: Restart IIS AppPool using PowerShell
+    - name: Ensure IIS AppPool 'DefaultAppPool' is started or restarted
       win_shell: |
         Import-Module WebAdministration
-        Restart-WebAppPool -Name 'DefaultAppPool'
+        $appPool = Get-WebAppPoolState -Name 'DefaultAppPool'
+        if ($appPool -eq 'Stopped') {
+          Start-WebAppPool -Name 'DefaultAppPool'
+          Write-Host "Started the Application Pool."
+        } elseif ($appPool -eq 'Started') {
+          Restart-WebAppPool -Name 'DefaultAppPool'
+          Write-Host "Restarted the Application Pool."
+        }
 
     - name: Clean up installer
       win_file:
