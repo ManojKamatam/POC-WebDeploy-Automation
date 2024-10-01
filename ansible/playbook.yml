@@ -23,7 +23,7 @@
         name: WMSVC
         state: restarted
 
-    - name: Add login.aspx to Default Documents at Website Level
+    - name: Add login.aspx to Default Documents for Default Web Site
       win_iis_website:
         name: Default Web Site
         state: started
