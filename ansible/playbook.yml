@@ -23,12 +23,20 @@
         name: WMSVC
         state: restarted
 
-    - name: Add login.aspx to Default Documents for Default Web Site
+    - name: Verify IIS Default Web Site Exists
       win_iis_website:
         name: Default Web Site
-        state: started
-        default_documents:
-          - login.aspx
+        state: present
+
+    - name: Ensure login.aspx is added to Default Documents
+      win_shell: |
+        Import-Module WebAdministration
+        $site = Get-Website -Name 'Default Web Site'
+        if ($site) {
+          if (-not ($site.DefaultDocuments | Where-Object { $_ -eq 'login.aspx' })) {
+            Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'} -location 'Default Web Site'
+          }
+        }
 
     - name: Ensure Default Web Site is running
       win_iis_website:
