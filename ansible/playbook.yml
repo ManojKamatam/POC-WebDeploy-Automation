@@ -76,29 +76,45 @@
         name: W3SVC
         state: restarted
 
-    - name: Create a Self-Signed Certificate with Friendly Name
+    - name: Check if a self-signed certificate already exists
       win_shell: |
-        New-SelfSignedCertificate -DnsName 'localhost' -CertStoreLocation Cert:\LocalMachine\My -FriendlyName 'MySelfSignedCert'
+        Import-Module WebAdministration
+        $certExists = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
+        if ($certExists) {
+          Write-Host "Self-signed certificate already exists."
+        } else {
+          New-SelfSignedCertificate -DnsName 'localhost' -CertStoreLocation Cert:\LocalMachine\My -FriendlyName 'MySelfSignedCert'
+          Write-Host "Self-signed certificate created."
+        }
 
     - name: Assign the Self-Signed Certificate to IIS
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
         if ($cert) {
-          # Bind the certificate to IIS with minimal information
+          # Bind the certificate to IIS
           New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 0
-          # Assign the certificate to the IIS binding
-          $binding = Get-WebBinding -Name 'Default Web Site' -Protocol "https"
-          if ($binding) {
-            Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateHash -Value $cert.Thumbprint
-            Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateStoreName -Value 'My'
-            Write-Host "Assigned certificate to the site binding."
-          } else {
-            Write-Host "Binding not found!"
-          }
+          Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateHash -Value $cert.Thumbprint
+          Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateStoreName -Value 'My'
+          Write-Host "Assigned certificate to the site binding."
         } else {
           Write-Host "Self-signed certificate not found."
         }
+
+    - name: Stop Windows Management Service for identity change
+      win_service:
+        name: WMSVC
+        state: stopped
+
+    - name: Change Windows Management Service identity to Windows/IIS Management Credentials
+      win_shell: |
+        Import-Module WebAdministration
+        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/ftpServer/security/authentication/anonymousAuthentication" -name "identity" -value "IIS_IUSRS"
+
+    - name: Start Windows Management Service
+      win_service:
+        name: WMSVC
+        state: started
 
     - name: Set IIS Authentication to Windows Authentication
       win_shell: |
