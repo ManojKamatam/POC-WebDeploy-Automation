@@ -30,7 +30,6 @@
         members: webdeployadmin
         state: present
 
-    # Ensure login.aspx is added to Default Documents
     - name: Ensure login.aspx is added to Default Documents
       win_shell: |
         Import-Module WebAdministration
@@ -45,27 +44,23 @@
           }
         }
 
-    # Check if HTTP binding exists, if not, add it
-    - name: Check if HTTP binding exists on port 80
+    - name: Ensure Default Web Site bindings are reset to HTTP
       win_shell: |
         Import-Module WebAdministration
         $bindings = Get-WebBinding -Name 'Default Web Site' | Where-Object { $_.bindingInformation -like '*:80:' }
         if ($bindings -eq $null) {
-          Write-Host "No HTTP binding on port 80 exists. Adding..."
           New-WebBinding -Name 'Default Web Site' -Protocol http -Port 80
         } else {
           Write-Host "HTTP binding on port 80 already exists."
         }
 
-    - name: Ensure IIS AppPool 'DefaultAppPool' is started
+    - name: Restart IIS AppPool 'DefaultAppPool'
       win_shell: |
         Import-Module WebAdministration
-        $appPoolState = Get-WebAppPoolState -Name 'DefaultAppPool'
-        if ($appPoolState -eq 'Stopped') {
-          Start-WebAppPool -Name 'DefaultAppPool'
-          Write-Host "App Pool started."
-        } else {
-          Write-Host "App Pool is already running."
+        Stop-WebAppPool -Name 'DefaultAppPool'
+        Start-WebAppPool -Name 'DefaultAppPool'
+        if ((Get-WebAppPoolState -Name 'DefaultAppPool') -eq 'Stopped') {
+          Write-Host "App Pool could not be started. Check the configuration."
         }
 
     - name: Stop IIS Management Service before identity change
