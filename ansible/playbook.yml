@@ -45,12 +45,17 @@
           }
         }
 
-    # Reset IIS Bindings (Remove HTTPS if not required)
-    - name: Reset IIS bindings to HTTP
+    # Check if HTTP binding exists, if not, add it
+    - name: Check if HTTP binding exists on port 80
       win_shell: |
         Import-Module WebAdministration
-        Remove-WebBinding -Name 'Default Web Site' -Protocol https
-        New-WebBinding -Name 'Default Web Site' -Protocol http -Port 80
+        $bindings = Get-WebBinding -Name 'Default Web Site' | Where-Object { $_.bindingInformation -like '*:80:' }
+        if ($bindings -eq $null) {
+          Write-Host "No HTTP binding on port 80 exists. Adding..."
+          New-WebBinding -Name 'Default Web Site' -Protocol http -Port 80
+        } else {
+          Write-Host "HTTP binding on port 80 already exists."
+        }
 
     - name: Ensure IIS AppPool 'DefaultAppPool' is started
       win_shell: |
