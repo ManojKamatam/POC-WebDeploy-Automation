@@ -9,6 +9,8 @@ pipeline {
         AWS_REGION = 'us-east-1'
         SECRET_NAME = 'secret-jenkins-access'
         VERSION_LABEL = "app-version-${BUILD_NUMBER}"
+        WEBDEPLOYADMIN_PASSWORD = credentials('WEBDEPLOYADMIN_PASSWORD')
+        WEBDEPLOYCONFIGWRITER_PASSWORD = credentials('WEBDEPLOYCONFIGWRITER_PASSWORD')
     }
 
     stages {
@@ -33,7 +35,9 @@ pipeline {
                         extraVars: [
                             application_name: "${APPLICATION_NAME}",
                             environment_name: "${ENVIRONMENT_NAME}",
-                            region: "${AWS_REGION}"
+                            region: "${AWS_REGION}",
+                            WEBDEPLOYADMIN_PASSWORD: "${WEBDEPLOYADMIN_PASSWORD}",
+                            WEBDEPLOYCONFIGWRITER_PASSWORD: "${WEBDEPLOYCONFIGWRITER_PASSWORD}"
                         ]
                     )
                 }
