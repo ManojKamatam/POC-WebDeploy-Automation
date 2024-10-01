@@ -38,11 +38,15 @@
     - name: Ensure login.aspx is added to Default Documents
       win_shell: |
         Import-Module WebAdministration
-        $defaultDocs = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "value" -location 'Default Web Site'
-        if ($defaultDocs -notcontains 'login.aspx') {
+        $site = Get-Website -Name 'Default Web Site'
+        if ($site) {
+          $defaultDocs = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "value" -location 'Default Web Site'
+          if ($defaultDocs -notcontains 'login.aspx') {
             Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'} -location 'Default Web Site'
-        } else {
-            Write-Host "login.aspx already exists in the default documents."
+            Write-Host "Added login.aspx to default documents."
+          } else {
+          Write-Host "login.aspx already exists in the default documents."
+          }
         }
 
     - name: Ensure Default Web Site is running
