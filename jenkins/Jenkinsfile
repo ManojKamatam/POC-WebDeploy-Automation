@@ -12,7 +12,6 @@ pipeline {
         
         // Use Jenkins Credentials Plugin to securely retrieve these passwords
         WEBDEPLOYADMIN_PASSWORD = credentials('WDeployAdmin')
-        WEBDEPLOYCONFIGWRITER_PASSWORD = credentials('WDeployAdmin')
     }
 
     stages {
@@ -46,8 +45,7 @@ pipeline {
                             application_name: "${APPLICATION_NAME}",
                             environment_name: "${ENVIRONMENT_NAME}",
                             region: "${AWS_REGION}",
-                            WEBDEPLOYADMIN_PASSWORD: "${WEBDEPLOYADMIN_PASSWORD}",
-                            WEBDEPLOYCONFIGWRITER_PASSWORD: "${WEBDEPLOYCONFIGWRITER_PASSWORD}"
+                            WEBDEPLOYADMIN_PASSWORD: "${WEBDEPLOYADMIN_PASSWORD}"
                         ]
                     )
                 }
