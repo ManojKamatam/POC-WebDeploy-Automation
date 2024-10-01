@@ -9,10 +9,10 @@ pipeline {
         AWS_REGION = 'us-east-1'
         SECRET_NAME = 'secret-jenkins-access'
         VERSION_LABEL = "app-version-${BUILD_NUMBER}"
-
+        
         // Use Jenkins Credentials Plugin to securely retrieve these passwords
         WEBDEPLOYADMIN_PASSWORD = credentials('WDeployAdmin')
-        WEBDEPLOYCONFIGWRITER_PASSWORD = credentials('WDeployAdmin')
+        WEBDEPLOYCONFIGWRITER_PASSWORD = credentials('WDeployConfigWriter')
     }
 
     stages {
@@ -24,6 +24,14 @@ pipeline {
                     def credentials = jsonSlurper.parseText(secretValue)
                     env.AWS_ACCESS_KEY_ID = credentials.keySet().iterator().next()
                     env.AWS_SECRET_ACCESS_KEY = credentials[env.AWS_ACCESS_KEY_ID]
+                }
+            }
+        }
+
+        stage('Install Ansible Collections') {
+            steps {
+                script {
+                    sh 'ansible-galaxy collection install ansible.windows'
                 }
             }
         }
