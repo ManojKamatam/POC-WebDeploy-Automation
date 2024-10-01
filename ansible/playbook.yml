@@ -39,10 +39,9 @@
       win_shell: |
         Import-Module WebAdministration
         $site = Get-Website -Name 'Default Web Site'
-        if ($site) {
-          if (-not ($site.DefaultDocuments | Where-Object { $_ -eq 'login.aspx' })) {
+        $defaultDocs = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "value" -location 'Default Web Site'
+        if (-not ($defaultDocs -contains 'login.aspx')) {
             Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'} -location 'Default Web Site'
-          }
         }
 
     - name: Ensure Default Web Site is running
