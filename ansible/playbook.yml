@@ -30,11 +30,6 @@
         members: webdeployadmin
         state: present
 
-    - name: Restart Web Management Service (WMSVC)
-      win_service:
-        name: WMSVC
-        state: restarted
-
     - name: Ensure login.aspx is added to Default Documents
       win_shell: |
         Import-Module WebAdministration
@@ -49,43 +44,6 @@
           }
         }
 
-    - name: Ensure Default Web Site exists and is running
-      win_shell: |
-        Import-Module WebAdministration
-        $site = Get-Website -Name 'Default Web Site'
-        if ($site -ne $null) {
-          if ($site.state -ne 'Started') {
-            Start-Website -Name 'Default Web Site'
-            Write-Host "Default Web Site started."
-          } else {
-            Write-Host "Default Web Site is already running."
-          }
-        } else {
-          Write-Host "Default Web Site does not exist."
-        }
-
-    - name: Ensure IIS AppPool 'DefaultAppPool' is started or restarted
-      win_shell: |
-        Import-Module WebAdministration
-        $appPool = Get-WebAppPoolState -Name 'DefaultAppPool'
-        if ($appPool -eq 'Stopped') {
-          Start-WebAppPool -Name 'DefaultAppPool'
-          Write-Host "Started the Application Pool."
-        } elseif ($appPool -eq 'Started') {
-          Restart-WebAppPool -Name 'DefaultAppPool'
-          Write-Host "Restarted the Application Pool."
-        }
-
-    - name: Clean up installer
-      win_file:
-        path: 'C:\\temp\\WebDeploy_x64.msi'
-        state: absent
-
-    - name: Restart IIS to apply changes
-      win_service:
-        name: W3SVC
-        state: restarted
-
     - name: Check if a self-signed certificate already exists
       win_shell: |
         Import-Module WebAdministration
@@ -95,38 +53,35 @@
         } else {
           New-SelfSignedCertificate -DnsName 'localhost' -CertStoreLocation Cert:\LocalMachine\My -FriendlyName 'MySelfSignedCert'
           Write-Host "Self-signed certificate created."
-        }
 
     - name: Assign the Self-Signed Certificate to IIS
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
         if ($cert) {
-          # Bind the certificate to IIS
           New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 0
           Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateHash -Value $cert.Thumbprint
           Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateStoreName -Value 'My'
           Write-Host "Assigned certificate to the site binding."
         } else {
           Write-Host "Self-signed certificate not found."
-        }
 
-    - name: Stop Windows Management Service for identity change
+    - name: Restart IIS to apply certificate changes
+      win_service:
+        name: W3SVC
+        state: restarted
+
+    - name: Stop IIS Management Service before identity change
       win_service:
         name: WMSVC
         state: stopped
 
-    - name: Change Windows Management Service identity to Windows/IIS Management Credentials
+    - name: Change IIS Management Service identity to Windows/IIS Management credentials
       win_shell: |
         Import-Module WebAdministration
         Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/ftpServer/security/authentication/anonymousAuthentication" -name "identity" -value "IIS_IUSRS"
 
-    - name: Start Windows Management Service
+    - name: Start IIS Management Service after identity change
       win_service:
         name: WMSVC
         state: started
-
-    - name: Set IIS Authentication to Windows Authentication
-      win_shell: |
-        Import-Module WebAdministration
-        Set-WebConfigurationProperty -Filter "/system.webServer/security/authentication/windowsAuthentication" -Name "enabled" -Value "True" -PSPath "IIS:\Sites\Default Web Site"
