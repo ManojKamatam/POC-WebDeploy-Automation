@@ -12,7 +12,7 @@ pipeline {
         
         // Use Jenkins Credentials Plugin to securely retrieve these passwords
         WEBDEPLOYADMIN_PASSWORD = credentials('WDeployAdmin')
-        WEBDEPLOYCONFIGWRITER_PASSWORD = credentials('WDeployConfigWriter')
+        WEBDEPLOYCONFIGWRITER_PASSWORD = credentials('WDeployAdmin')
     }
 
     stages {
