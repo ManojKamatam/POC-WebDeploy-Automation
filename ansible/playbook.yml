@@ -45,7 +45,7 @@
             Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'} -location 'Default Web Site'
             Write-Host "Added login.aspx to default documents."
           } else {
-          Write-Host "login.aspx already exists in the default documents."
+            Write-Host "login.aspx already exists in the default documents."
           }
         }
 
@@ -76,22 +76,21 @@
         name: W3SVC
         state: restarted
 
-    - name: Create a Self-Signed Certificate
+    - name: Create a Self-Signed Certificate with Friendly Name
       win_shell: |
-        New-SelfSignedCertificate -DnsName 'ec2-52-44-236-121.compute-1.amazonaws.com' -CertStoreLocation Cert:\LocalMachine\My
+        New-SelfSignedCertificate -DnsName 'localhost' -CertStoreLocation Cert:\LocalMachine\My -FriendlyName 'MySelfSignedCert'
 
-    - name: Bind SSL Certificate to Default Web Site
+    - name: Bind SSL Certificate to Default Web Site using Friendly Name
       win_shell: |
-      Import-Module WebAdministration
-      $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'ec2-52-44-236-121.compute-1.amazonaws.com' }
-      if ($cert) {
-        # Use the correct format for binding information (IP:Port:Hostname)
-        New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -IPAddress '*' -HostHeader 'ec2-52-44-236-121.compute-1.amazonaws.com' -SslFlags 1
-        Set-ItemProperty -Path 'IIS:\SslBindings\0.0.0.0!443' -Name SslCertificateStoreName -Value 'My'
-        Set-ItemProperty -Path 'IIS:\SslBindings\0.0.0.0!443' -Name SslCertificateHash -Value $cert.Thumbprint
-      } else {
-        Write-Host "SSL certificate not found for 'ec2-52-44-236-121.compute-1.amazonaws.com'."
-      }
+        Import-Module WebAdministration
+        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
+        if ($cert) {
+          New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -IPAddress '*' -SslFlags 1
+          Set-ItemProperty -Path 'IIS:\SslBindings\0.0.0.0!443' -Name SslCertificateStoreName -Value 'My'
+          Set-ItemProperty -Path 'IIS:\SslBindings\0.0.0.0!443' -Name SslCertificateHash -Value $cert.Thumbprint
+        } else {
+          Write-Host "Self-signed certificate not found."
+        }
 
     - name: Set IIS Authentication to Windows Authentication
       win_shell: |
