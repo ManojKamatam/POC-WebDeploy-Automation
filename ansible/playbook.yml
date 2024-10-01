@@ -56,10 +56,10 @@
         name: Default Web Site
         state: started
 
-    - name: Restart DefaultAppPool
-      win_iis_apppool:
-        name: DefaultAppPool
-        state: started
+    - name: Restart IIS AppPool using PowerShell
+      win_shell: |
+        Import-Module WebAdministration
+        Restart-WebAppPool -Name 'DefaultAppPool'
 
     - name: Clean up installer
       win_file:
