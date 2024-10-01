@@ -65,6 +65,7 @@
           Write-Host "Assigned certificate to the site binding."
         } else {
           Write-Host "Self-signed certificate not found."
+        }
 
     - name: Restart IIS to apply certificate changes
       win_service:
