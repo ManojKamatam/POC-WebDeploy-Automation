@@ -70,6 +70,7 @@
           Write-Host "App Pool started."
         } else {
           Write-Host "App Pool is already running."
+          }
 
     - name: Stop IIS Management Service before identity change
       win_service:
