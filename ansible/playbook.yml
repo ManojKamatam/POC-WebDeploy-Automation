@@ -49,10 +49,20 @@
           }
         }
 
-    - name: Ensure Default Web Site is running
-      win_iis_website:
-        name: Default Web Site
-        state: started
+    - name: Ensure Default Web Site exists and is running
+      win_shell: |
+        Import-Module WebAdministration
+        $site = Get-Website -Name 'Default Web Site'
+        if ($site -ne $null) {
+          if ($site.state -ne 'Started') {
+            Start-Website -Name 'Default Web Site'
+            Write-Host "Default Web Site started."
+          } else {
+            Write-Host "Default Web Site is already running."
+          }
+        } else {
+          Write-Host "Default Web Site does not exist."
+        }
 
     - name: Ensure IIS AppPool 'DefaultAppPool' is started or restarted
       win_shell: |
