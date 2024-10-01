@@ -30,6 +30,7 @@
         members: webdeployadmin
         state: present
 
+    # Ensure login.aspx is added to Default Documents
     - name: Ensure login.aspx is added to Default Documents
       win_shell: |
         Import-Module WebAdministration
@@ -44,23 +45,13 @@
           }
         }
 
-    - name: Check if a self-signed certificate already exists
+    # Reset IIS Bindings (Remove HTTPS if not required)
+    - name: Reset IIS bindings to HTTP
       win_shell: |
         Import-Module WebAdministration
-        $certExists = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
-        if ($certExists) {
-          Write-Host "Self-signed certificate already exists."
-        } else {
-          New-SelfSignedCertificate -DnsName 'localhost' -CertStoreLocation Cert:\LocalMachine\My -FriendlyName 'MySelfSignedCert'
-          Write-Host "Self-signed certificate created."
-          }
+        Remove-WebBinding -Name 'Default Web Site' -Protocol https
+        New-WebBinding -Name 'Default Web Site' -Protocol http -Port 80
 
-    - name: Restart IIS to apply certificate changes
-      win_service:
-        name: W3SVC
-        state: restarted
-
-    # PowerShell to manage the DefaultAppPool
     - name: Ensure IIS AppPool 'DefaultAppPool' is started
       win_shell: |
         Import-Module WebAdministration
@@ -70,7 +61,7 @@
           Write-Host "App Pool started."
         } else {
           Write-Host "App Pool is already running."
-          }
+        }
 
     - name: Stop IIS Management Service before identity change
       win_service:
