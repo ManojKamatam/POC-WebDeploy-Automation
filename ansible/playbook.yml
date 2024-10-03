@@ -78,7 +78,33 @@
         name: WMSVC
         state: started
 
+    - name: Increase paging file size to 4GB
+      win_shell: |
+        $min = 4096  # Minimum size in MB
+        $max = 4096  # Maximum size in MB
+        $osDrive = Get-WmiObject -Query "SELECT * FROM Win32_OperatingSystem" | Select-Object -ExpandProperty SystemDrive
+        $currentSize = Get-WmiObject -Query "SELECT * FROM Win32_PageFileSetting WHERE Name='$osDrive\\pagefile.sys'"
+        if ($currentSize.InitialSize -ne $min -or $currentSize.MaximumSize -ne $max) {
+          Write-Host "Adjusting paging file size to $min MB..."
+          Set-WmiInstance -Query "SELECT * FROM Win32_PageFileSetting WHERE Name='$osDrive\\pagefile.sys'" -Arguments @{
+            InitialSize = $min
+            MaximumSize = $max
+          }
+        } else {
+          Write-Host "Paging file size is already set to $min MB."
+        }
+
     - name: Restart IIS to ensure all services are running
       win_service:
         name: W3SVC
         state: restarted
+
+    - name: Check if Default Web Site is running
+      win_shell: |
+        Import-Module WebAdministration
+        $status = Get-WebSiteState -Name 'Default Web Site'
+        if ($status -ne 'Started') {
+          Start-WebSite -Name 'Default Web Site'
+        } else {
+          Write-Host "Default Web Site is running."
+        }
