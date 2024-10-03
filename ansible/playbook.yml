@@ -14,16 +14,12 @@
       win_get_url:
         url: "https://my-s3-bucket-for-jenkins-pipeline-setup.s3.amazonaws.com/webdeploy_amd64_en-US.msi"
         dest: "C:\\temp\\WebDeploy_x64.msi"
-      retries: 3
-      delay: 60
 
     - name: Install WebDeploy
       win_package:
         path: 'C:\\temp\\WebDeploy_x64.msi'
         state: present
         arguments: '/quiet'
-      retries: 3
-      delay: 60
 
     - name: Create WebDeploy Admin User
       win_user:
@@ -35,6 +31,18 @@
       win_group_membership:
         name: Administrators
         members: webdeployadmin
+        state: present
+
+    - name: Add WebDeployConfigWriter to Group
+      win_user:
+        name: "WDeployConfigWriter"
+        password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+        state: present
+
+    - name: Add WebDeployConfigWriter to Administrators Group
+      win_group_membership:
+        name: Administrators
+        members: WDeployConfigWriter
         state: present
 
     - name: Ensure login.aspx is added to Default Documents
@@ -50,8 +58,6 @@
             Write-Host "login.aspx already exists in the default documents."
           }
         }
-      retries: 3
-      delay: 60
 
     - name: Ensure Default Web Site bindings are reset to HTTP
       win_shell: |
@@ -62,8 +68,12 @@
         } else {
           Write-Host "HTTP binding on port 80 already exists."
         }
-      retries: 3
-      delay: 60
+
+    - name: Start Default Web Site if stopped
+      win_service:
+        name: 'W3SVC'
+        start_mode: auto
+        state: started
 
     - name: Restart IIS AppPool 'DefaultAppPool'
       win_shell: |
@@ -73,8 +83,6 @@
         if ((Get-WebAppPoolState -Name 'DefaultAppPool') -eq 'Stopped') {
           Write-Host "App Pool could not be started. Check the configuration."
         }
-      retries: 3
-      delay: 60
 
     - name: Stop IIS Management Service before identity change
       win_service:
@@ -85,17 +93,23 @@
       win_shell: |
         Import-Module WebAdministration
         Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/ftpServer/security/authentication/anonymousAuthentication" -name "identity" -value "IIS_IUSRS"
-      retries: 3
-      delay: 60
 
     - name: Start IIS Management Service after identity change
       win_service:
         name: WMSVC
         state: started
 
+    - name: Ensure SSL certificate is bound correctly
+      win_shell: |
+        Import-Module WebAdministration
+        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
+        if ($cert) {
+          New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 0
+          Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateHash -Value $cert.Thumbprint
+          Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateStoreName -Value 'My'
+        }
+
     - name: Restart IIS to ensure all services are running
       win_service:
         name: W3SVC
         state: restarted
-      retries: 3
-      delay: 60
