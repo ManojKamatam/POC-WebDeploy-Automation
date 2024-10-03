@@ -57,6 +57,10 @@
         } else {
           Write-Host "Default Web Site does not exist."
         }
+      register: login_aspx_result
+      retries: 3
+      delay: 5
+      until: login_aspx_result.rc == 0
 
     - name: Start Default Web Site if stopped
       win_shell: |
@@ -68,6 +72,10 @@
         } else {
           Write-Host "Default Web Site is already running."
         }
+      register: website_start_result
+      retries: 3
+      delay: 5
+      until: website_start_result.rc == 0
 
     - name: Ensure DefaultAppPool is running and restart if necessary
       win_shell: |
@@ -103,6 +111,10 @@
         } else {
           Write-Host "SSL certificate not found!"
         }
+      register: remote_enable_result
+      retries: 3
+      delay: 5
+      until: remote_enable_result.rc == 0
 
     - name: Start IIS Management Service after changes
       win_service:
