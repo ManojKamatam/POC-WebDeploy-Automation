@@ -54,13 +54,20 @@
           } else {
             Write-Host "login.aspx already exists in the default documents."
           }
+        } else {
+          Write-Host "Default Web Site does not exist."
         }
 
     - name: Start Default Web Site if stopped
-      win_service:
-        name: 'W3SVC'
-        start_mode: auto
-        state: started
+      win_shell: |
+        Import-Module WebAdministration
+        $site = Get-Website -Name 'Default Web Site'
+        if ($site.state -ne 'Started') {
+          Start-Website -Name 'Default Web Site'
+          Write-Host "Started Default Web Site."
+        } else {
+          Write-Host "Default Web Site is already running."
+        }
 
     - name: Ensure DefaultAppPool is running and restart if necessary
       win_shell: |
@@ -114,6 +121,12 @@
         }
 
     - name: Ensure Default Web Site is still running after all changes
-      win_service:
-        name: 'W3SVC'
-        state: started
+      win_shell: |
+        Import-Module WebAdministration
+        $site = Get-Website -Name 'Default Web Site'
+        if ($site.state -ne 'Started') {
+          Start-Website -Name 'Default Web Site'
+          Write-Host "Default Web Site started after all changes."
+        } else {
+          Write-Host "Default Web Site is still running."
+        }
