@@ -42,11 +42,12 @@
         members: WDeployConfigWriter
         state: present
 
-    - name: Ensure login.aspx is added to Default Documents
+    - name: Ensure login.aspx is added to Default Documents (with debug logging)
       win_shell: |
         Import-Module WebAdministration
         $site = Get-Website -Name 'Default Web Site'
         if ($site) {
+          Write-Host "Default Web Site exists."
           $defaultDocs = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "value" -location 'Default Web Site'
           if ($defaultDocs -notcontains 'login.aspx') {
             Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'} -location 'Default Web Site'
@@ -55,22 +56,26 @@
             Write-Host "login.aspx already exists in the default documents."
           }
         } else {
-          Write-Host "Default Web Site does not exist."
+          Write-Host "Default Web Site does not exist!"
         }
       register: login_aspx_result
       retries: 3
       delay: 5
       until: login_aspx_result.rc == 0
 
-    - name: Start Default Web Site if stopped
+    - name: Start Default Web Site if stopped (enforce start with detailed logging)
       win_shell: |
         Import-Module WebAdministration
         $site = Get-Website -Name 'Default Web Site'
         if ($site.state -ne 'Started') {
+          Write-Host "Starting Default Web Site..."
           Start-Website -Name 'Default Web Site'
-          Write-Host "Started Default Web Site."
+        }
+        $siteUpdated = Get-Website -Name 'Default Web Site'
+        if ($siteUpdated.state -eq 'Started') {
+          Write-Host "Default Web Site started successfully."
         } else {
-          Write-Host "Default Web Site is already running."
+          Write-Host "Failed to start Default Web Site!"
         }
       register: website_start_result
       retries: 3
@@ -82,6 +87,7 @@
         Import-Module WebAdministration
         $appPool = Get-WebAppPoolState -Name 'DefaultAppPool'
         if ($appPool -ne 'Started') {
+          Write-Host "Starting DefaultAppPool..."
           Start-WebAppPool -Name 'DefaultAppPool'
           Write-Host "DefaultAppPool started."
         } else {
@@ -93,23 +99,28 @@
         name: WMSVC
         state: stopped
 
-    - name: Create a self-signed SSL certificate
+    - name: Create a self-signed SSL certificate (with detailed logging)
       win_shell: |
         Import-Module WebAdministration
-        New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My" | Out-Null
-        Write-Host "Self-signed certificate 'office-deployment' created."
+        Write-Host "Creating self-signed certificate..."
+        $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My"
+        if ($cert) {
+          Write-Host "Self-signed certificate 'office-deployment' created successfully."
+        } else {
+          Write-Host "Failed to create SSL certificate."
+        }
 
-    - name: Enable Remote Connections and set SSL certificate in IIS Management Service
+    - name: Enable Remote Connections and set SSL certificate in IIS Management Service (detailed logging)
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'office-deployment' }
         if ($cert) {
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/ftpServer/security/authentication/anonymousAuthentication" -name "identity" -value "IIS_IUSRS"
+          Write-Host "Binding SSL certificate to IIS Management Service..."
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
           Write-Host "Remote connections enabled and SSL certificate bound to IIS Management Service."
         } else {
-          Write-Host "SSL certificate not found!"
+          Write-Host "SSL certificate not found! Failed to bind certificate."
         }
       register: remote_enable_result
       retries: 3
