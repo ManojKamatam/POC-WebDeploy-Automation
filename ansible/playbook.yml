@@ -99,6 +99,11 @@
         name: WMSVC
         state: started
 
+    - name: Run Garbage Collection to free memory
+      win_shell: |
+        [System.GC]::Collect()
+        Write-Host "Garbage collection completed."
+
     - name: Ensure SSL certificate is bound correctly
       win_shell: |
         Import-Module WebAdministration
