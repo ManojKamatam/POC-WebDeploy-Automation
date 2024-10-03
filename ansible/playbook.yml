@@ -20,14 +20,14 @@
 
     - name: Create WebDeploy Admin User
       win_user:
-        name: "WDeployAdmin"
+        name: "webdeployadmin"
         password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
         state: present
 
     - name: Add WebDeploy Admin to Administrators Group
       win_group_membership:
         name: Administrators
-        members: WDeployAdmin
+        members: webdeployadmin
         state: present
 
     - name: Add WebDeployConfigWriter to Group
@@ -96,13 +96,3 @@
       win_service:
         name: WMSVC
         state: started
-
-    - name: Increase page file size to 4GB
-      win_shell: |
-        wmic pagefileset where name="C:\\pagefile.sys" set InitialSize=4096,MaximumSize=4096
-        Write-Host "Increased page file size to 4GB."
-
-    - name: Restart IIS to ensure all services are running
-      win_service:
-        name: W3SVC
-        state: restarted
