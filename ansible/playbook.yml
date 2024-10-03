@@ -62,7 +62,7 @@
       delay: 5
       until: login_aspx_result.rc == 0
 
-    - name: Start Default Web Site if stopped (enforce start with detailed logging)
+    - name: Start Default Web Site if stopped (with detailed logging)
       win_shell: |
         Import-Module WebAdministration
         $site = Get-Website -Name 'Default Web Site'
@@ -93,7 +93,7 @@
           Write-Host "DefaultAppPool is already running."
         }
 
-    - name: Stop IIS Management Service before identity change
+    - name: Stop IIS Management Service before enabling remote connection
       win_service:
         name: WMSVC
         state: stopped
@@ -109,7 +109,7 @@
           Write-Host "Failed to create SSL certificate."
         }
 
-    - name: Enable Remote Connections and set SSL certificate in IIS Management Service (detailed logging)
+    - name: Enable Remote Connections and set SSL certificate in IIS Management Service
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'office-deployment' }
@@ -126,7 +126,7 @@
       delay: 5
       until: remote_enable_result.rc == 0
 
-    - name: Start IIS Management Service after changes
+    - name: Start IIS Management Service after enabling remote connections
       win_service:
         name: WMSVC
         state: started
