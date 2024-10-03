@@ -1,9 +1,6 @@
 ---
 - name: Configure Windows EC2 Instances in Elastic Beanstalk
   hosts: windows
-  vars:
-    ansible_winrm_operation_timeout_sec: 1200  # Increased WinRM operation timeout to 20 minutes
-    ansible_winrm_read_timeout_sec: 1800       # Increased read timeout to 30 minutes
   tasks:
     - name: Ensure C:\temp directory exists
       win_file:
