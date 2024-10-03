@@ -59,12 +59,13 @@
           }
         }
 
-    - name: Ensure Default Web Site bindings are reset to HTTP
+    - name: Ensure Default Web Site bindings are reset to HTTP on port 80
       win_shell: |
         Import-Module WebAdministration
         $bindings = Get-WebBinding -Name 'Default Web Site' | Where-Object { $_.bindingInformation -like '*:80:' }
         if ($bindings -eq $null) {
           New-WebBinding -Name 'Default Web Site' -Protocol http -Port 80
+          Write-Host "HTTP binding created on port 80."
         } else {
           Write-Host "HTTP binding on port 80 already exists."
         }
@@ -104,17 +105,14 @@
         [System.GC]::Collect()
         Write-Host "Garbage collection completed."
 
-    - name: Ensure SSL certificate is bound correctly
+    - name: Ensure SSL certificate is bound to HTTP on port 80
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
         if ($cert) {
-          if (-not (Get-WebBinding -Name 'Default Web Site' -Protocol 'https')) {
-            New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 0
-            Write-Host "HTTPS binding created."
-          }
-          Set-ItemProperty -Path IIS:\SslBindings\0.0.0.0!443 -Name SslCertificateHash -Value $cert.Thumbprint
-          Set-ItemProperty -Path IIS:\SslBindings\0.0.0.0!443 -Name SslCertificateStoreName -Value 'My'
+          Set-ItemProperty -Path IIS:\SslBindings\0.0.0.0!80 -Name SslCertificateHash -Value $cert.Thumbprint
+          Set-ItemProperty -Path IIS:\SslBindings\0.0.0.0!80 -Name SslCertificateStoreName -Value 'My'
+          Write-Host "SSL certificate bound to HTTP on port 80."
         } else {
           Write-Host "No SSL certificate found."
         }
