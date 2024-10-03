@@ -20,14 +20,14 @@
 
     - name: Create WebDeploy Admin User
       win_user:
-        name: "webdeployadmin"
+        name: "WDeployAdmin"
         password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
         state: present
 
     - name: Add WebDeploy Admin to Administrators Group
       win_group_membership:
         name: Administrators
-        members: webdeployadmin
+        members: WDeployAdmin
         state: present
 
     - name: Add WebDeployConfigWriter to Group
@@ -96,3 +96,14 @@
       win_service:
         name: WMSVC
         state: started
+
+    - name: Ensure SSL Certificate is Bound Correctly (optional)
+      win_shell: |
+        Import-Module WebAdministration
+        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
+        if ($cert) {
+          Set-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 1 -CertificateThumbprint $cert.Thumbprint
+          Write-Host "SSL Certificate bound to Default Web Site"
+        } else {
+          Write-Host "SSL Certificate not found. Skipping SSL binding."
+        }
