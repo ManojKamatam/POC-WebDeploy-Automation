@@ -23,14 +23,14 @@
 
     - name: Create WebDeploy Admin User
       win_user:
-        name: "webdeployadmin"
+        name: "WDeployAdmin"
         password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
         state: present
 
     - name: Add WebDeploy Admin to Administrators Group
       win_group_membership:
         name: Administrators
-        members: webdeployadmin
+        members: WDeployAdmin
         state: present
 
     - name: Add WebDeployConfigWriter to Group
@@ -100,17 +100,10 @@
         name: WMSVC
         state: started
 
-    - name: Ensure SSL certificate is bound to HTTP on port 80
+    - name: Increase page file size to 4GB
       win_shell: |
-        Import-Module WebAdministration
-        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
-        if ($cert) {
-          Set-ItemProperty -Path IIS:\SslBindings\0.0.0.0!80 -Name SslCertificateHash -Value $cert.Thumbprint
-          Set-ItemProperty -Path IIS:\SslBindings\0.0.0.0!80 -Name SslCertificateStoreName -Value 'My'
-          Write-Host "SSL certificate bound to HTTP on port 80."
-        } else {
-          Write-Host "No SSL certificate found."
-        }
+        wmic pagefileset where name="C:\\pagefile.sys" set InitialSize=4096,MaximumSize=4096
+        Write-Host "Increased page file size to 4GB."
 
     - name: Restart IIS to ensure all services are running
       win_service:
