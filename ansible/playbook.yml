@@ -109,9 +109,14 @@
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'MySelfSignedCert' }
         if ($cert) {
-          New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 0
-          Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateHash -Value $cert.Thumbprint
-          Set-ItemProperty -Path IIS:\SslBindings\!443 -Name SslCertificateStoreName -Value 'My'
+          if (-not (Get-WebBinding -Name 'Default Web Site' -Protocol 'https')) {
+            New-WebBinding -Name 'Default Web Site' -Protocol https -Port 443 -SslFlags 0
+            Write-Host "HTTPS binding created."
+          }
+          Set-ItemProperty -Path IIS:\SslBindings\0.0.0.0!443 -Name SslCertificateHash -Value $cert.Thumbprint
+          Set-ItemProperty -Path IIS:\SslBindings\0.0.0.0!443 -Name SslCertificateStoreName -Value 'My'
+        } else {
+          Write-Host "No SSL certificate found."
         }
 
     - name: Restart IIS to ensure all services are running
