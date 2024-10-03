@@ -58,10 +58,8 @@
         } else {
           Write-Host "Default Web Site does not exist!"
         }
-      register: login_aspx_result
       retries: 3
       delay: 5
-      until: login_aspx_result.rc == 0
 
     - name: Start Default Web Site if stopped (enforce start with detailed logging)
       win_shell: |
@@ -77,10 +75,8 @@
         } else {
           Write-Host "Failed to start Default Web Site!"
         }
-      register: website_start_result
       retries: 3
       delay: 5
-      until: website_start_result.rc == 0
 
     - name: Ensure DefaultAppPool is running and restart if necessary
       win_shell: |
@@ -89,7 +85,6 @@
         if ($appPool -ne 'Started') {
           Write-Host "Starting DefaultAppPool..."
           Start-WebAppPool -Name 'DefaultAppPool'
-          Write-Host "DefaultAppPool started."
         } else {
           Write-Host "DefaultAppPool is already running."
         }
@@ -122,10 +117,8 @@
         } else {
           Write-Host "SSL certificate not found! Failed to bind certificate."
         }
-      register: remote_enable_result
       retries: 3
       delay: 5
-      until: remote_enable_result.rc == 0
 
     - name: Start IIS Management Service after changes
       win_service:
@@ -138,7 +131,6 @@
         $appPool = Get-WebAppPoolState -Name 'DefaultAppPool'
         if ($appPool -ne 'Started') {
           Start-WebAppPool -Name 'DefaultAppPool'
-          Write-Host "DefaultAppPool started after all changes."
         } else {
           Write-Host "DefaultAppPool is still running."
         }
