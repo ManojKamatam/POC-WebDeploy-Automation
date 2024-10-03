@@ -1,6 +1,9 @@
 ---
 - name: Configure Windows EC2 Instances in Elastic Beanstalk
   hosts: windows
+  vars:
+    ansible_winrm_operation_timeout_sec: 1200  # Increased WinRM operation timeout to 20 minutes
+    ansible_winrm_read_timeout_sec: 1800       # Increased read timeout to 30 minutes
   tasks:
     - name: Ensure C:\temp directory exists
       win_file:
@@ -11,12 +14,16 @@
       win_get_url:
         url: "https://my-s3-bucket-for-jenkins-pipeline-setup.s3.amazonaws.com/webdeploy_amd64_en-US.msi"
         dest: "C:\\temp\\WebDeploy_x64.msi"
+      retries: 3
+      delay: 60
 
     - name: Install WebDeploy
       win_package:
         path: 'C:\\temp\\WebDeploy_x64.msi'
         state: present
         arguments: '/quiet'
+      retries: 3
+      delay: 60
 
     - name: Create WebDeploy Admin User
       win_user:
@@ -43,6 +50,8 @@
             Write-Host "login.aspx already exists in the default documents."
           }
         }
+      retries: 3
+      delay: 60
 
     - name: Ensure Default Web Site bindings are reset to HTTP
       win_shell: |
@@ -53,6 +62,8 @@
         } else {
           Write-Host "HTTP binding on port 80 already exists."
         }
+      retries: 3
+      delay: 60
 
     - name: Restart IIS AppPool 'DefaultAppPool'
       win_shell: |
@@ -62,6 +73,8 @@
         if ((Get-WebAppPoolState -Name 'DefaultAppPool') -eq 'Stopped') {
           Write-Host "App Pool could not be started. Check the configuration."
         }
+      retries: 3
+      delay: 60
 
     - name: Stop IIS Management Service before identity change
       win_service:
@@ -72,35 +85,17 @@
       win_shell: |
         Import-Module WebAdministration
         Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/ftpServer/security/authentication/anonymousAuthentication" -name "identity" -value "IIS_IUSRS"
+      retries: 3
+      delay: 60
 
     - name: Start IIS Management Service after identity change
       win_service:
         name: WMSVC
         state: started
 
-    - name: Increase paging file size to 4GB using wmic
-      win_shell: |
-        $osDrive = (Get-WmiObject -Class Win32_OperatingSystem).SystemDrive
-        $wmicCommand = "wmic pagefileset where name='$osDrive\\\\pagefile.sys' set InitialSize=4096,MaximumSize=4096"
-        $result = Invoke-Expression $wmicCommand
-        Write-Host $result
-      register: paging_file_result
-      ignore_errors: yes
-
-    - name: Debug paging file size change result
-      debug:
-        var: paging_file_result
-
     - name: Restart IIS to ensure all services are running
       win_service:
         name: W3SVC
         state: restarted
-
-    - name: Check if Default Web Site is running
-      win_shell: |
-        Import-Module WebAdministration
-        $status = Get-WebSiteState -Name 'Default Web Site'
-        if ($status -ne 'Started') {
-          Start-WebSite -Name 'Default Web Site'
-        } else {
-          Write-Host "Default Web Site is running."
+      retries: 3
+      delay: 60
