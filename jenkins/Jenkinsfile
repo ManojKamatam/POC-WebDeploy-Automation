@@ -1,6 +1,5 @@
 pipeline {
     agent any
-
     environment {
         S3_BUCKET = 'my-s3-bucket-for-jenkins-pipeline-setup'
         S3_KEY = 'my-app.zip'
@@ -59,4 +58,5 @@ pipeline {
             echo 'Deployment process failed. Please check the logs for more details.'
         }
     }
+}
 }
