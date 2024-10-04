@@ -41,114 +41,17 @@
         name: Administrators
         members: WDeployConfigWriter
         state: present
+        
+  - name: Add login.aspx to Default Documents
+    hosts: windows
+    tasks:
+      - name: Ensure login.aspx is added to Default Documents
+        win_iis_webapplication:
+          name: 'Default Web Site'
+          site: 'Default Web Site'
+          state: present
+          path: '/'
+          application_pool: 'DefaultAppPool'
+          default_documents:
+            - 'login.aspx'
 
-    - name: Ensure login.aspx is added to Default Documents (with debug logging)
-      win_shell: |
-        Import-Module WebAdministration
-        $site = Get-Website -Name 'Default Web Site'
-        if ($site) {
-          $defaultDocs = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "value" -location 'Default Web Site'
-          if (-not ($defaultDocs -contains 'login.aspx')) {
-            Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'} -location 'Default Web Site'
-            Write-Host "Added login.aspx to default documents."
-          } else {
-            Write-Host "login.aspx already exists in the default documents."
-          }
-        } else {
-          Write-Host "Default Web Site does not exist!"
-        }
-      register: login_aspx_result
-      retries: 3
-      delay: 5
-      until: login_aspx_result.rc == 0
-
-    - name: Start Default Web Site if stopped (with detailed logging)
-      win_shell: |
-        Import-Module WebAdministration
-        $site = Get-Website -Name 'Default Web Site'
-        if ($site.state -ne 'Started') {
-          Write-Host "Starting Default Web Site..."
-          Start-Website -Name 'Default Web Site'
-        }
-        $siteUpdated = Get-Website -Name 'Default Web Site'
-        if ($siteUpdated.state -eq 'Started') {
-          Write-Host "Default Web Site started successfully."
-        } else {
-          Write-Host "Failed to start Default Web Site!"
-        }
-      register: website_start_result
-      retries: 3
-      delay: 5
-      until: website_start_result.rc == 0
-
-    - name: Ensure DefaultAppPool is running and restart if necessary
-      win_shell: |
-        Import-Module WebAdministration
-        $appPool = Get-WebAppPoolState -Name 'DefaultAppPool'
-        if ($appPool -ne 'Started') {
-          Write-Host "Starting DefaultAppPool..."
-          Start-WebAppPool -Name 'DefaultAppPool'
-          Write-Host "DefaultAppPool started."
-        } else {
-          Write-Host "DefaultAppPool is already running."
-        }
-
-    - name: Stop IIS Management Service before enabling remote connection
-      win_service:
-        name: WMSVC
-        state: stopped
-
-    - name: Create a self-signed SSL certificate (with detailed logging)
-      win_shell: |
-        Import-Module WebAdministration
-        Write-Host "Creating self-signed certificate..."
-        $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My"
-        if ($cert) {
-          Write-Host "Self-signed certificate 'office-deployment' created successfully."
-        } else {
-          Write-Host "Failed to create SSL certificate."
-        }
-
-    - name: Enable Remote Connections and set SSL certificate in IIS Management Service
-      win_shell: |
-        Import-Module WebAdministration
-        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq 'office-deployment' }
-        if ($cert) {
-          Write-Host "Binding SSL certificate to IIS Management Service..."
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-          Write-Host "Remote connections enabled and SSL certificate bound to IIS Management Service."
-        } else {
-          Write-Host "SSL certificate not found! Failed to bind certificate."
-        }
-      register: remote_enable_result
-      retries: 3
-      delay: 5
-      until: remote_enable_result.rc == 0
-
-    - name: Start IIS Management Service after enabling remote connections
-      win_service:
-        name: WMSVC
-        state: started
-
-    - name: Ensure DefaultAppPool is still running after all changes
-      win_shell: |
-        Import-Module WebAdministration
-        $appPool = Get-WebAppPoolState -Name 'DefaultAppPool'
-        if ($appPool -ne 'Started') {
-          Start-WebAppPool -Name 'DefaultAppPool'
-          Write-Host "DefaultAppPool started after all changes."
-        } else {
-          Write-Host "DefaultAppPool is still running."
-        }
-
-    - name: Ensure Default Web Site is still running after all changes
-      win_shell: |
-        Import-Module WebAdministration
-        $site = Get-Website -Name 'Default Web Site'
-        if ($site.state -ne 'Started') {
-          Start-Website -Name 'Default Web Site'
-          Write-Host "Default Web Site started after all changes."
-        } else {
-          Write-Host "Default Web Site is still running."
-        }
