@@ -50,56 +50,6 @@ pipeline {
             }
         }
 
-        stage('Upload to S3') {
-            steps {
-                sh "aws s3 cp application.zip s3://${S3_BUCKET}/${S3_KEY} --region ${AWS_REGION}"
-            }
-        }
-
-        stage('Create Application Version') {
-            steps {
-                sh """
-                    aws elasticbeanstalk create-application-version \
-                    --application-name ${APPLICATION_NAME} \
-                    --version-label ${VERSION_LABEL} \
-                    --source-bundle S3Bucket=${S3_BUCKET},S3Key=${S3_KEY} \
-                    --region ${AWS_REGION}
-                """
-            }
-        }
-
-        stage('Wait for Environment Readiness') {
-            steps {
-                script {
-                    def isReady = false
-                    while (!isReady) {
-                        def result = sh(script: """
-                            aws elasticbeanstalk describe-environments --application-name ${APPLICATION_NAME} \
-                            --environment-names ${ENVIRONMENT_NAME} --query 'Environments[0].Status' --output text --region ${AWS_REGION}
-                        """, returnStdout: true).trim()
-                        if (result == 'Ready') {
-                            isReady = true
-                        } else {
-                            echo "Waiting for environment to be ready..."
-                            sleep(time: 60, unit: 'SECONDS') // Wait 60 seconds before checking again
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Deploy Application') {
-            steps {
-                sh """
-                    aws elasticbeanstalk update-environment \
-                      --application-name ${APPLICATION_NAME} \
-                      --environment-name ${ENVIRONMENT_NAME} \
-                      --version-label ${VERSION_LABEL} \
-                      --region ${AWS_REGION}
-                """
-            }
-        }
-    }
 
     post {
         success {
