@@ -18,32 +18,31 @@
         state: present
         arguments: '/quiet'
 
-    - name: Add WebDeploy Admin User and ConfigWriter with password never expiring
-      - name: Create WebDeploy Admin User with password never expiring
-        win_user:
-          name: "webdeployadmin"
-          password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
-          password_never_expires: yes
-          state: present
+    - name: Create WebDeploy Admin User with password never expiring
+      win_user:
+        name: "webdeployadmin"
+        password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+        state: present
+        password_never_expires: yes
 
-      - name: Add WebDeploy Admin to Administrators Group
-        win_group_membership:
-          name: Administrators
-          members: webdeployadmin
-          state: present
+    - name: Add WebDeploy Admin to Administrators Group
+      win_group_membership:
+        name: Administrators
+        members: webdeployadmin
+        state: present
 
-      - name: Create WebDeployConfigWriter User with password never expiring
-        win_user:
-          name: "WDeployConfigWriter"
-          password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
-          password_never_expires: yes
-          state: present
+    - name: Add WebDeployConfigWriter User with password never expiring
+      win_user:
+        name: "WDeployConfigWriter"
+        password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+        state: present
+        password_never_expires: yes
 
-      - name: Add WebDeployConfigWriter to Administrators Group
-        win_group_membership:
-          name: Administrators
-          members: WDeployConfigWriter
-          state: present
+    - name: Add WebDeployConfigWriter to Administrators Group
+      win_group_membership:
+        name: Administrators
+        members: WDeployConfigWriter
+        state: present
         
   - name: Add login.aspx to Default Documents
     hosts: windows
