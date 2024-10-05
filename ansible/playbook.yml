@@ -91,6 +91,9 @@
       win_shell: |
         Import-Module WebAdministration
         New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My"
+    - name: Wait for SSL certificate to be created
+      pause:
+        seconds: 10
 
     - name: Enable Remote Connections with SSL
       win_shell: |
