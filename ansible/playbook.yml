@@ -43,17 +43,13 @@
         name: Administrators
         members: WDeployConfigWriter
         state: present
-        
-  - name: Add login.aspx to Default Documents
-    hosts: windows
-    tasks:
-      - name: Ensure login.aspx is added to Default Documents
-        win_iis_webapplication:
-          name: 'Default Web Site'
-          site: 'Default Web Site'
-          state: present
-          path: '/'
-          application_pool: 'DefaultAppPool'
-          default_documents:
-            - 'login.aspx'
 
+    - name: Add login.aspx to Default Documents
+      win_iis_webapplication:
+        name: 'Default Web Site'
+        site: 'Default Web Site'
+        state: present
+        path: /
+        application_pool: 'DefaultAppPool'
+        default_documents:
+          - 'login.aspx'
