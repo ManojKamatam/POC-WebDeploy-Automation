@@ -92,6 +92,7 @@
         Import-Module WebAdministration
         $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My" -FriendlyName "OfficeDeploymentCertificate"
         Write-Host "Self-signed certificate 'OfficeDeploymentCertificate' created."
+      when: cert_check.rc != 0
         
     - name: Pause to ensure certificate is created and ready
       pause:
