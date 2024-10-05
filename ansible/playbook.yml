@@ -44,23 +44,21 @@
         members: WDeployConfigWriter
         state: present
 
-    # Correcting the addition of login.aspx at the Default Web Site level
     - name: Add login.aspx to Default Documents at Default Web Site level
       win_shell: |
         Import-Module WebAdministration
-        $site = Get-Website -Name 'Default Web Site'
-        if ($site) {
-          $defaultDocs = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -Name "." -location "Default Web Site"
-          if ($defaultDocs.collection.value -notcontains 'login.aspx') {
-            Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'} -location "Default Web Site"
+        $defaultDocsPath = "MACHINE/WEBROOT/APPHOST/Default Web Site"
+        $defaultDocs = Get-WebConfigurationProperty -pspath $defaultDocsPath -filter "system.webServer/defaultDocument/files" -name "."
+    
+        # Check if 'login.aspx' already exists
+        if ($defaultDocs.collection.value -notcontains 'login.aspx') {
+            Add-WebConfigurationProperty -pspath $defaultDocsPath -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'}
             Write-Host "'login.aspx' added to Default Documents for Default Web Site"
-          } else {
-            Write-Host "'login.aspx' already exists in Default Documents for Default Web Site"
-          }
         } else {
-          Write-Host "Default Web Site not found!"
-          exit 1
+            Write-Host "'login.aspx' already exists in Default Documents for Default Web Site"
         }
+      args:
+        executable: "powershell"
 
     - name: Start DefaultAppPool if not running
       win_shell: |
