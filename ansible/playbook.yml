@@ -81,9 +81,19 @@
 
     - name: Enable Remote Connections with SSL
       win_shell: |
-        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+      $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+      if ($cert) {
+        Write-Host "Certificate found: $($cert.Thumbprint)"
         Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
         Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
+      } else {
+        Write-Host "Certificate not found!"
+        exit 1
+      }
+      register: remote_enable_result
+      retries: 3
+      delay: 5
+      until: remote_enable_result.rc == 0
 
     - name: Start IIS Management Service after identity change
       win_service:
