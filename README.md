@@ -10,5 +10,21 @@
 
 5) winrm quickconfig
 
+6) # Check if WinRM service is running
+Get-Service WinRM
+
+# Check the WinRM listener
+winrm enumerate winrm/config/listener
+
+# Ensure the service is configured to allow basic auth
+winrm get winrm/config/service/auth
+
+winrm set winrm/config/service/auth @{Basic="true"}
+Enable-PSRemoting -Force
+
+# Then try enabling Basic auth again:
+Set-Item WSMan:\localhost\Service\Auth\Basic $true
+
+
 
 
