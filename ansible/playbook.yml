@@ -63,6 +63,7 @@
           Write-Host "DefaultAppPool started."
         } else {
           Write-Host "DefaultAppPool is already running."
+        }
 
     - name: Ensure Default Web Site is running
       win_shell: |
