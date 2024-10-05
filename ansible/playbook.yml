@@ -92,36 +92,46 @@
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.DnsName -eq 'office-deployment' }
         if ($cert) {
           Write-Host "Certificate already exists: $($cert.Thumbprint)"
-          exit 0
         } else {
           Write-Host "Certificate not found. A new one will be created."
-          exit 1
         }
       register: cert_check
-      ignore_errors: yes
+      failed_when: cert_check.rc != 0 and cert_check.stdout | search('Certificate not found') == false
+      
+
 
     - name: Create a self-signed SSL certificate only if not already present
       win_shell: |
         Import-Module WebAdministration
-        $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My" -FriendlyName "OfficeDeploymentCertificate"
+        $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\\LocalMachine\\My" -FriendlyName "OfficeDeploymentCertificate"
         Write-Host "Self-signed certificate 'OfficeDeploymentCertificate' created."
-      when: cert_check.rc != 0
+      when: cert_check.stdout | search('Certificate not found')
 
-    - name: Enable Remote Connections with SSL
+    - name: Assign the SSL certificate to IIS Management
       win_shell: |
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
         if ($cert) {
-          Write-Host "Certificate found: $($cert.Thumbprint)"
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+          Write-Host "Assigning SSL certificate $($cert.Thumbprint) to IIS Management."
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-          Restart-Service WMSVC
-          Write-Host "Remote connection enabled and SSL certificate applied successfully."
+          Write-Host "SSL certificate $($cert.Thumbprint) assigned."
         } else {
           Write-Host "Certificate not found. Exiting."
           exit 1
         }
 
-    - name: Start IIS Management Service after identity change
+    - name: Enable Remote Connections with SSL
+      win_shell: |
+        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
+        if ($cert) {
+          Write-Host "Enabling Remote Connections with SSL certificate $($cert.Thumbprint)."
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+        } else {
+          Write-Host "Certificate not found. Exiting."
+          exit 1
+        }
+
+    - name: Start IIS Management Service after applying SSL certificate
       win_service:
         name: WMSVC
         state: started
+      ignore_errors: no
