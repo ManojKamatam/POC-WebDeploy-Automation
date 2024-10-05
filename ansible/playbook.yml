@@ -97,8 +97,6 @@
         }
       register: cert_check
       failed_when: cert_check.rc != 0 and cert_check.stdout | search('Certificate not found') == false
-      
-
 
     - name: Create a self-signed SSL certificate only if not already present
       win_shell: |
@@ -107,30 +105,28 @@
         Write-Host "Self-signed certificate 'OfficeDeploymentCertificate' created."
       when: cert_check.stdout | search('Certificate not found')
 
-    - name: Assign the SSL certificate to IIS Management
+    - name: Assign the SSL certificate and enable remote connections with identity change
       win_shell: |
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
         if ($cert) {
-          Write-Host "Assigning SSL certificate $($cert.Thumbprint) to IIS Management."
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-          Write-Host "SSL certificate $($cert.Thumbprint) assigned."
-        } else {
-          Write-Host "Certificate not found. Exiting."
-          exit 1
-        }
+          Write-Host "Assigning SSL certificate $($cert.Thumbprint) to IIS Management and applying identity change."
+          
+          # Change Identity settings (e.g., set a specific identity if required)
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
 
-    - name: Enable Remote Connections with SSL
-      win_shell: |
-        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
-        if ($cert) {
-          Write-Host "Enabling Remote Connections with SSL certificate $($cert.Thumbprint)."
+          # Enable remote management with SSL
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
+          
+          Write-Host "SSL certificate and remote connection applied successfully."
         } else {
           Write-Host "Certificate not found. Exiting."
           exit 1
         }
 
-    - name: Start IIS Management Service after applying SSL certificate
+    - name: Start IIS Management Service after applying all configurations
       win_service:
         name: WMSVC
         state: started
