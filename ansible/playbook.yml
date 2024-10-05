@@ -87,10 +87,11 @@
         name: WMSVC
         state: stopped
         
-    - name: Create a self-signed SSL certificate
+    - name: Create a self-signed SSL certificate with a friendly name
       win_shell: |
         Import-Module WebAdministration
-        $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My"
+        $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My" -FriendlyName "OfficeDeploymentCertificate"
+        Write-Host "Self-signed certificate 'OfficeDeploymentCertificate' created."
         
     - name: Pause to ensure certificate is created and ready
       pause:
@@ -101,16 +102,6 @@
         $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'office-deployment' }
         if ($cert) {
           Write-Host "Certificate found: $($cert.Thumbprint)"
-        } else {
-          Write-Host "Certificate not found. Exiting."
-          exit 1
-        }
-    - name: Set friendly name for SSL certificate using certutil
-      win_shell: |
-        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'office-deployment' }
-        if ($cert) {
-          certutil -repairstore my "$($cert.Thumbprint)" "OfficeDeploymentCertificate"
-          Write-Host "Friendly name set to 'OfficeDeploymentCertificate'"
         } else {
           Write-Host "Certificate not found. Exiting."
           exit 1
