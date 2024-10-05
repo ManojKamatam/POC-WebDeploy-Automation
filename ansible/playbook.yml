@@ -90,14 +90,15 @@
     - name: Create a self-signed SSL certificate
       win_shell: |
         Import-Module WebAdministration
-        New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My"
+        $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My"
+        Set-ItemProperty -Path "cert:\LocalMachine\My\$($cert.Thumbprint)" -Name FriendlyName -Value "OfficeDeploymentCertificate"
     - name: Wait for SSL certificate to be created
       pause:
         seconds: 10
 
     - name: Enable Remote Connections with SSL
       win_shell: |
-        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
         if ($cert) {
           Write-Host "Certificate found: $($cert.Thumbprint)"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
@@ -107,7 +108,7 @@
         } else {
           Write-Host "Certificate not found! Retrying after a short delay."
           Start-Sleep -Seconds 5
-          $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+          $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
           if ($cert) {
             Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
             Restart-Service WMSVC
