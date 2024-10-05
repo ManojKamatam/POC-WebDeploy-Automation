@@ -91,10 +91,17 @@
       win_shell: |
         Import-Module WebAdministration
         $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My"
-        Set-ItemProperty -Path "cert:\LocalMachine\My\$($cert.Thumbprint)" -Name FriendlyName -Value "OfficeDeploymentCertificate"
+        
     - name: Wait for SSL certificate to be created
-      pause:
-        seconds: 10
+      win_shell: |
+        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+        if ($cert) {
+          certutil -repairstore my "$($cert.Thumbprint)" "OfficeDeploymentCertificate"
+          Write-Host "Friendly name set to 'OfficeDeploymentCertificate'"
+        } else {
+          Write-Host "Certificate not found. Exiting."
+          exit 1
+        }
 
     - name: Enable Remote Connections with SSL
       win_shell: |
