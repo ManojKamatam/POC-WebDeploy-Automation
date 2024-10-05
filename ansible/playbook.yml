@@ -74,6 +74,7 @@
           Write-Host "Default Web Site started."
         } else {
           Write-Host "Default Web Site is already running."
+        }
 
     - name: Stop IIS Management Service before identity change
       win_service:
