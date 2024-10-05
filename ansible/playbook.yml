@@ -53,3 +53,39 @@
         application_pool: 'DefaultAppPool'
         default_documents:
           - 'login.aspx'
+
+    - name: Start DefaultAppPool if not running
+      win_shell: |
+        Import-Module WebAdministration
+        $appPool = Get-WebAppPoolState -Name 'DefaultAppPool'
+        if ($appPool -ne 'Started') {
+          Start-WebAppPool -Name 'DefaultAppPool'
+        }
+
+    - name: Ensure Default Web Site is running
+      win_shell: |
+        Import-Module WebAdministration
+        $site = Get-Website -Name 'Default Web Site'
+        if ($site.state -ne 'Started') {
+          Start-Website -Name 'Default Web Site'
+        }
+
+    - name: Stop IIS Management Service before identity change
+      win_service:
+        name: WMSVC
+        state: stopped
+
+    - name: Create a self-signed SSL certificate
+      win_shell: |
+        New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My"
+
+    - name: Enable Remote Connections with SSL
+      win_shell: |
+        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
+
+    - name: Start IIS Management Service after identity change
+      win_service:
+        name: WMSVC
+        state: started
