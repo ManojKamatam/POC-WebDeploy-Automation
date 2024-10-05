@@ -59,6 +59,7 @@
         } else {
           Write-Host "Default Web Site not found!"
           exit 1
+        }
 
     - name: Start DefaultAppPool if not running
       win_shell: |
@@ -69,6 +70,7 @@
           Write-Host "DefaultAppPool started."
         } else {
           Write-Host "DefaultAppPool is already running."
+        }
 
     - name: Ensure Default Web Site is running
       win_shell: |
@@ -79,6 +81,7 @@
           Write-Host "Default Web Site started."
         } else {
           Write-Host "Default Web Site is already running."
+        }
 
     - name: Stop IIS Management Service before identity change
       win_service:
