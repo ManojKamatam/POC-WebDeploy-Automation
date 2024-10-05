@@ -97,16 +97,6 @@
       pause:
         seconds: 15
 
-    - name: Validate certificate creation
-      win_shell: |
-        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'office-deployment' }
-        if ($cert) {
-          Write-Host "Certificate found: $($cert.Thumbprint)"
-        } else {
-          Write-Host "Certificate not found. Exiting."
-          exit 1
-        }
-
     - name: Enable Remote Connections with SSL
       win_shell: |
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
