@@ -20,7 +20,7 @@
 
     - name: Create WebDeploy Admin User with password never expiring
       win_user:
-        name: "webdeployadmin"
+        name: "WDeployAdmin"
         password: "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
         state: present
         password_never_expires: yes
@@ -28,7 +28,7 @@
     - name: Add WebDeploy Admin to Administrators Group
       win_group_membership:
         name: Administrators
-        members: webdeployadmin
+        members: WDeployAdmin
         state: present
 
     - name: Add WebDeployConfigWriter User with password never expiring
@@ -86,17 +86,26 @@
       win_service:
         name: WMSVC
         state: stopped
-        
-    - name: Create a self-signed SSL certificate with a friendly name
+
+    - name: Check if SSL certificate exists
+      win_shell: |
+        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+        if ($cert) {
+          Write-Host "Certificate already exists: $($cert.Thumbprint)"
+          exit 0
+        } else {
+          Write-Host "Certificate not found. A new one will be created."
+          exit 1
+        }
+      register: cert_check
+      ignore_errors: yes
+
+    - name: Create a self-signed SSL certificate only if not already present
       win_shell: |
         Import-Module WebAdministration
         $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My" -FriendlyName "OfficeDeploymentCertificate"
         Write-Host "Self-signed certificate 'OfficeDeploymentCertificate' created."
       when: cert_check.rc != 0
-        
-    - name: Pause to ensure certificate is created and ready
-      pause:
-        seconds: 15
 
     - name: Enable Remote Connections with SSL
       win_shell: |
@@ -108,23 +117,9 @@
           Restart-Service WMSVC
           Write-Host "Remote connection enabled and SSL certificate applied successfully."
         } else {
-          Write-Host "Certificate not found! Retrying after a short delay."
-          Start-Sleep -Seconds 5
-          $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
-          if ($cert) {
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-            Restart-Service WMSVC
-            Write-Host "Remote connection enabled and SSL certificate applied after retry."
-          } else {
-            Write-Host "Certificate still not found. Exiting with error."
-            exit 1
-          }
+          Write-Host "Certificate not found. Exiting."
+          exit 1
         }
-      
-      register: remote_enable_result
-      retries: 3
-      delay: 5
-      until: remote_enable_result.rc == 0
 
     - name: Start IIS Management Service after identity change
       win_service:
