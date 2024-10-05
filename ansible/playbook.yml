@@ -44,6 +44,7 @@
         members: WDeployConfigWriter
         state: present
 
+    # Correct addition of login.aspx at the root level of Default Web Site
     - name: Add login.aspx to Default Documents at Default Web Site level
       win_shell: |
         Import-Module WebAdministration
@@ -113,7 +114,7 @@
           } else {
             Write-Host "Certificate still not found. Exiting with error."
             exit 1
-          }
+        }
       register: remote_enable_result
       retries: 3
       delay: 5
