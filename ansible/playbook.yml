@@ -44,15 +44,21 @@
         members: WDeployConfigWriter
         state: present
 
-    - name: Add login.aspx to Default Documents
-      win_iis_webapplication:
-        name: 'Default Web Site'
-        site: 'Default Web Site'
-        state: present
-        path: /
-        application_pool: 'DefaultAppPool'
-        default_documents:
-          - 'login.aspx'
+    - name: Add login.aspx to Default Documents at Default Web Site level
+      win_shell: |
+        Import-Module WebAdministration
+        $site = Get-Website -Name 'Default Web Site'
+        if ($site) {
+          $defaultDocs = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -Name "." -location "Default Web Site"
+          if ($defaultDocs.collection.value -notcontains 'login.aspx') {
+            Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'} -location "Default Web Site"
+            Write-Host "'login.aspx' added to Default Documents for Default Web Site"
+          } else {
+            Write-Host "'login.aspx' already exists in Default Documents for Default Web Site"
+          }
+        } else {
+          Write-Host "Default Web Site not found!"
+          exit 1
 
     - name: Start DefaultAppPool if not running
       win_shell: |
@@ -63,7 +69,6 @@
           Write-Host "DefaultAppPool started."
         } else {
           Write-Host "DefaultAppPool is already running."
-        }
 
     - name: Ensure Default Web Site is running
       win_shell: |
@@ -74,7 +79,6 @@
           Write-Host "Default Web Site started."
         } else {
           Write-Host "Default Web Site is already running."
-        }
 
     - name: Stop IIS Management Service before identity change
       win_service:
@@ -88,15 +92,25 @@
 
     - name: Enable Remote Connections with SSL
       win_shell: |
-        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.DnsName -eq 'office-deployment' }
         if ($cert) {
           Write-Host "Certificate found: $($cert.Thumbprint)"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
+          Restart-Service WMSVC
+          Write-Host "Remote connection enabled and SSL certificate applied successfully."
         } else {
-          Write-Host "Certificate not found!"
-          exit 1
-        }
+          Write-Host "Certificate not found! Retrying after a short delay."
+          Start-Sleep -Seconds 5
+          $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+          if ($cert) {
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
+            Restart-Service WMSVC
+            Write-Host "Remote connection enabled and SSL certificate applied after retry."
+          } else {
+            Write-Host "Certificate still not found. Exiting with error."
+            exit 1
+          }
       register: remote_enable_result
       retries: 3
       delay: 5
