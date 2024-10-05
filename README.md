@@ -8,4 +8,7 @@
 3) netstat -an | findstr 5985
 4) Test-NetConnection -ComputerName 52.44.236.121 -Port 5985
 
+5) winrm quickconfig
+
+
 
