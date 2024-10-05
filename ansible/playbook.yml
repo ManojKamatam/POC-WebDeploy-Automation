@@ -60,7 +60,9 @@
         $appPool = Get-WebAppPoolState -Name 'DefaultAppPool'
         if ($appPool -ne 'Started') {
           Start-WebAppPool -Name 'DefaultAppPool'
-        }
+          Write-Host "DefaultAppPool started."
+        } else {
+          Write-Host "DefaultAppPool is already running."
 
     - name: Ensure Default Web Site is running
       win_shell: |
@@ -68,7 +70,9 @@
         $site = Get-Website -Name 'Default Web Site'
         if ($site.state -ne 'Started') {
           Start-Website -Name 'Default Web Site'
-        }
+          Write-Host "Default Web Site started."
+        } else {
+          Write-Host "Default Web Site is already running."
 
     - name: Stop IIS Management Service before identity change
       win_service:
@@ -77,19 +81,20 @@
 
     - name: Create a self-signed SSL certificate
       win_shell: |
+        Import-Module WebAdministration
         New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\LocalMachine\My"
 
     - name: Enable Remote Connections with SSL
       win_shell: |
-      $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'office-deployment' }
-      if ($cert) {
-        Write-Host "Certificate found: $($cert.Thumbprint)"
-        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
-        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-      } else {
-        Write-Host "Certificate not found!"
-        exit 1
-      }
+        $cert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+        if ($cert) {
+          Write-Host "Certificate found: $($cert.Thumbprint)"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
+        } else {
+          Write-Host "Certificate not found!"
+          exit 1
+        }
       register: remote_enable_result
       retries: 3
       delay: 5
