@@ -8,9 +8,20 @@
 3) netstat -an | findstr 5985
 4) Test-NetConnection -ComputerName 52.44.236.121 -Port 5985
 
-5) winrm quickconfig
+# Test these if unreachable
 
-6) # Check if WinRM service is running
+5) winrm quickconfig
+6) winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+7) winrm enumerate winrm/config/listener
+8) winrm enumerate winrm/config/listener
+9) winrm create winrm/config/listener?Address=*+Transport=HTTP
+10) Restart-Service winrm
+11) Test-WsMan -ComputerName 54.164.3.251 -Authentication Basic -Credential (Get-Credential)
+12) 
+13) winrm set winrm/config/service/auth '@{Basic="true"}'
+
+
+14) # Check if WinRM service is running
 Get-Service WinRM
 
 # Check the WinRM listener
