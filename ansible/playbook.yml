@@ -96,6 +96,7 @@
         } else {
           Write-Host "Certificate not found. A new one will be created."
           exit 1  # Exit with failure to trigger certificate creation
+        }
       register: cert_check
       failed_when: cert_check.rc not in [0, 1]
 
@@ -129,22 +130,8 @@
       retries: 3
       delay: 10
 
-    - name: Check WMSVC status before starting (using win_shell as workaround)
-      win_shell: |
-        $status = Get-Service -Name WMSVC
-        Write-Host "WMSVC Status: $($status.Status)"
-        if ($status.Status -eq 'Stopped') {
-          exit 0
-        } else {
-          exit 1
-        }
-      register: service_status
-      failed_when: service_status.rc not in [0, 1]
-
-    - name: Start WMSVC service if stopped
+    - name: Start IIS Management Service after applying all configurations
       win_service:
         name: WMSVC
         state: started
-      when: service_status.rc == 0
-      retries: 3
-      delay: 15
+      ignore_errors: no
