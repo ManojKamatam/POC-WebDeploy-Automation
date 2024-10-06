@@ -129,8 +129,15 @@
       retries: 3
       delay: 10
 
-    - name: Start IIS Management Service after applying all configurations
+    - name: Check the status of the WMSVC service before starting
+      win_service_info:
+        name: WMSVC
+      register: service_status
+
+    - name: Start WMSVC service after applying configurations
       win_service:
         name: WMSVC
         state: started
-      ignore_errors: no
+      when: service_status.status == 'Stopped'
+      retries: 3
+      delay: 15
