@@ -92,10 +92,12 @@
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.DnsName -eq 'office-deployment' }
         if ($cert) {
           Write-Host "Certificate already exists: $($cert.Thumbprint)"
+          exit 0  # Exit with success if certificate exists
         } else {
           Write-Host "Certificate not found. A new one will be created."
-        }
+          exit 1  # Exit with failure to trigger certificate creation
       register: cert_check
+      failed_when: cert_check.rc not in [0, 1]
 
     - name: Create a self-signed SSL certificate only if not already present
       win_shell: |
@@ -124,6 +126,8 @@
           Write-Host "Certificate not found. Exiting."
           exit 1
         }
+      retries: 3
+      delay: 10
 
     - name: Start IIS Management Service after applying all configurations
       win_service:
