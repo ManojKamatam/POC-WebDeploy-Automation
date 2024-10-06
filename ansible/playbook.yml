@@ -96,14 +96,13 @@
           Write-Host "Certificate not found. A new one will be created."
         }
       register: cert_check
-      failed_when: cert_check.rc != 0 and cert_check.stdout | search('Certificate not found') == false
 
     - name: Create a self-signed SSL certificate only if not already present
       win_shell: |
         Import-Module WebAdministration
         $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\\LocalMachine\\My" -FriendlyName "OfficeDeploymentCertificate"
         Write-Host "Self-signed certificate 'OfficeDeploymentCertificate' created."
-      when: cert_check.stdout | search('Certificate not found')
+      when: cert_check.rc == 1
 
     - name: Assign the SSL certificate and enable remote connections with identity change
       win_shell: |
