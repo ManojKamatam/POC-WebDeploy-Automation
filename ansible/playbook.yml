@@ -117,24 +117,24 @@
       when: cert_check.rc == 1
       delay: 15
 
-    - name: Apply IIS Management Changes in a Single Step
+    - name: Apply IIS Management Remote Connection, Identity Change, and SSL in One Step
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
 
         if ($cert) {
-          Write-Host "Assigning SSL certificate $($cert.Thumbprint) to IIS Management, enabling remote connections, and applying identity changes."
+          Write-Host "Applying IIS Management: enabling remote connections, setting identity, and applying SSL certificate."
 
           # Enable remote management with SSL
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
 
-          # Change Identity settings (set specific identity for IIS Management)
+          # Change Identity settings
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
 
-          Write-Host "IIS Management remote connection, identity, and SSL certificate successfully applied."
+          Write-Host "Remote connections, identity, and SSL certificate successfully applied."
         } else {
           Write-Host "Certificate not found. Exiting."
           exit 1
@@ -142,7 +142,7 @@
       retries: 3
       delay: 15
 
-    - name: Start IIS Management Service after applying all configurations
+    - name: Start IIS Management Service after all configurations
       win_service:
         name: WMSVC
         state: started
