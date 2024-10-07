@@ -91,6 +91,11 @@
         name: WMSVC
         state: stopped
 
+    - name: Enable IIS remote management feature (ensure it is installed)
+      win_feature:
+        name: "Web-Mgmt-Service"
+        state: present
+
     - name: Check if SSL certificate exists
       win_shell: |
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.DnsNameList -contains 'office-deployment' }
@@ -110,46 +115,49 @@
         $cert = New-SelfSignedCertificate -DnsName "office-deployment" -CertStoreLocation "cert:\\LocalMachine\\My" -FriendlyName "OfficeDeploymentCertificate"
         Write-Host "Self-signed certificate 'OfficeDeploymentCertificate' created."
       when: cert_check.rc == 1
+      delay: 15
 
-    - name: Assign the SSL certificate and enable remote connections with identity change
+     name: Apply IIS Management Changes in a Single Step
       win_shell: |
+        Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
+
         if ($cert) {
-          Write-Host "Assigning SSL certificate $($cert.Thumbprint) to IIS Management and applying identity change."
-          
-          # Change Identity settings (e.g., set a specific identity if required)
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+          Write-Host "Assigning SSL certificate $($cert.Thumbprint) to IIS Management, enabling remote connections, and applying identity changes."
 
           # Enable remote management with SSL
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-          
-          Write-Host "SSL certificate and remote connection applied successfully."
+
+          # Change Identity settings (set specific identity for IIS Management)
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+
+          Write-Host "IIS Management remote connection, identity, and SSL certificate successfully applied."
         } else {
           Write-Host "Certificate not found. Exiting."
           exit 1
-        }
       retries: 3
-      delay: 10
+      delay: 15
 
-    - name: Check WMSVC status before starting (using win_shell as workaround)
-      win_shell: |
-        $status = Get-Service -Name WMSVC
-        Write-Host "WMSVC Status: $($status.Status)"
-        if ($status.Status -eq 'Stopped') {
-          exit 0
-        } else {
-          exit 1
-        }
-      register: service_status
-      failed_when: service_status.rc not in [0, 1]
-
-    - name: Start WMSVC service if stopped
+    - name: Start IIS Management Service after applying all configurations
       win_service:
         name: WMSVC
         state: started
-      when: service_status.rc == 0
+      retries: 3
+      delay: 10
+
+    - name: Enable Windows Firewall rule for IIS management if necessary
+      win_shell: |
+        netsh advfirewall firewall set rule group="Windows Remote Management" new enable=yes
+      register: firewall_status
+      failed_when: firewall_status.rc != 0
+
+    - name: Perform IIS Reset to apply all changes
+      win_shell: |
+        iisreset
+      register: iisreset_status
+      failed_when: iisreset_status.rc != 0
       retries: 3
       delay: 15
