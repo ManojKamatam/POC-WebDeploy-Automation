@@ -142,7 +142,7 @@
 
     - name: Enable IIS remote management feature (ensure it is installed and enabled)
       win_feature:
-        name: "IIS-WebServerManagementTools"
+        name: "Web-Mgmt-Service"
         state: present
 
     - name: Enable Windows Firewall rule for IIS management if necessary
