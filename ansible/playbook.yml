@@ -118,7 +118,7 @@
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
 
         if ($cert) {
-          Write-Host "Found the certificate: $($cert.Thumbprint)"
+        Write-Host "Found the certificate: $($cert.Thumbprint)"
 
           # Stop the Management Service
           Stop-Service WMSVC
