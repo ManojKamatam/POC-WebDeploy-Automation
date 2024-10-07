@@ -139,3 +139,20 @@
         name: WMSVC
         state: started
       ignore_errors: no
+
+    - name: Enable IIS remote management feature (ensure it is installed and enabled)
+      win_feature:
+        name: "IIS-WebServerManagementTools"
+        state: present
+
+    - name: Enable Windows Firewall rule for IIS management if necessary
+      win_shell: |
+        netsh advfirewall firewall set rule group="Windows Remote Management" new enable=yes
+      register: firewall_status
+      failed_when: firewall_status.rc != 0
+
+    - name: Start IIS Management Service after applying all configurations
+      win_service:
+        name: WMSVC
+        state: started
+      ignore_errors: no
