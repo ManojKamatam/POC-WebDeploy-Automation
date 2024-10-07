@@ -54,9 +54,9 @@
         if ($defaultDocs.collection.value -notcontains 'login.aspx') {
           Add-WebConfigurationProperty -pspath $defaultDocsPath -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'}
           Write-Host "'login.aspx' added to Default Documents for Default Web Site"
-      } else {
+        } else {
         Write-Host "'login.aspx' already exists in Default Documents for Default Web Site"
-      }
+        }
     args:
       executable: "powershell"
     register: login_addition
