@@ -117,36 +117,31 @@
       when: cert_check.rc == 1
       delay: 15
 
-    - name: Ensure IIS Management Applies the SSL Certificate Properly
+    - name: Apply IIS Management Changes in a Single Move
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
 
         if ($cert) {
           Write-Host "Found the certificate: $($cert.Thumbprint)"
+          # Enabling remote management, changing identity, and assigning SSL
+          
+          # Enable remote management
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+
+          # Change Identity settings
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+
           # Assigning SSL certificate for IIS Management
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-          Write-Host "SSL Certificate assigned to IIS management."
+
+          Write-Host "IIS Management remote connection, identity, and SSL certificate changes successfully applied."
         } else {
           Write-Host "SSL certificate not found. Exiting."
           exit 1
         }
-      register: ssl_assignment
-      failed_when: ssl_assignment.rc != 0
-
-    - name: Enable Remote Management and Identity Change after stopping WMSVC
-      win_shell: |
-        Import-Module WebAdministration
-        Write-Host "Enabling remote management and applying identity change."
-        
-        # Enable remote management
-        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
-
-        # Apply identity change
-        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
-        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
-        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
-        Write-Host "Identity and remote management changes successfully applied."
       retries: 3
       delay: 15
 
