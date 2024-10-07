@@ -134,20 +134,18 @@
       register: ssl_assignment
       failed_when: ssl_assignment.rc != 0
 
-    - name: Apply Identity Changes and Enable Remote Management
+    - name: Enable Remote Management and Identity Change after stopping WMSVC
       win_shell: |
         Import-Module WebAdministration
-
         Write-Host "Enabling remote management and applying identity change."
-
-        # Enable remote management with SSL
+        
+        # Enable remote management
         Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
 
-        # Apply the identity changes
+        # Apply identity change
         Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
         Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
         Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
-
         Write-Host "Identity and remote management changes successfully applied."
       retries: 3
       delay: 15
