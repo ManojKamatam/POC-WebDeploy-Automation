@@ -130,11 +130,13 @@
           Write-Host "Management Service stopped."
 
           # Enable remote management
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+          $managementSection = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "management"
+          $managementSection.enableRemoteManagement = $true
+          $managementSection | Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management"
           Write-Host "Remote management enabled."
 
           # Change Identity settings
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser  "
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser    "
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
           Write-Host "Identity settings applied."
@@ -142,10 +144,6 @@
           # Assign SSL certificate for IIS Management
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
           Write-Host "SSL Certificate assigned to IIS Management."
-
-          # Apply changes using iisreset
-          iisreset
-          Write-Host "Changes applied."
 
           # Start the Management Service
           Start-Service WMSVC
@@ -155,5 +153,13 @@
           exit 1
         }
       register: remote_mgmt
+      retries: 3
+      delay: 15
+
+    - name: Perform IIS Reset to apply all changes
+      win_shell: |
+        iisreset
+      register: iisreset_status
+      failed_when: iisreset_status.rc != 0
       retries: 3
       delay: 15
