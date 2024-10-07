@@ -124,13 +124,13 @@
 
         if ($cert) {
           Write-Host "Found the certificate: $($cert.Thumbprint)"
-          
+      
           # Enable remote management
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true -Verbose
           Write-Host "Remote management enabled."
 
           # Change Identity settings
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser "
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
           Write-Host "Identity settings applied."
