@@ -138,7 +138,7 @@
           Write-Host "Identity settings applied."
 
           # Assign SSL certificate for IIS Management
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint -Force
+          netsh http add sslcert ipport=0.0.0.0:8172 certhash=$cert.Thumbprint appid='{00000000-0000-0000-0000-000000000000}'
           Write-Host "SSL Certificate assigned to IIS Management."
 
           # Start the Management Service
