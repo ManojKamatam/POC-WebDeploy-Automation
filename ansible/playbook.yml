@@ -117,45 +117,41 @@
       when: cert_check.rc == 1
       delay: 15
 
-    - name: Enable Remote Management
-      win_shell: |
-        Import-Module WebAdministration
-        Write-Host "Enabling Remote Management..."
-        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
-        Write-Host "Remote Management enabled."
-      register: remote_management
-      failed_when: remote_management.rc != 0
-
-    - name: Apply Identity Credentials
-      win_shell: |
-        Import-Module WebAdministration
-        Write-Host "Applying Identity Credentials..."
-        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
-        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
-        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
-        Write-Host "Identity credentials applied."
-      register: identity_change
-      failed_when: identity_change.rc != 0
-
-    - name: Assign SSL Certificate for Remote Management
+    - name: Apply IIS Management Changes in a Single Move
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
+
         if ($cert) {
-          Write-Host "Assigning SSL Certificate $($cert.Thumbprint) to IIS Management."
+          Write-Host "Found the certificate: $($cert.Thumbprint)"
+          
+          # Apply all changes in one step: Enable Remote Management, Identity Change, and SSL Assignment
+
+          # 1. Enable remote management
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+
+          # 2. Change Identity settings
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+
+          # 3. Assign SSL certificate for IIS Management
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-          Write-Host "SSL Certificate assigned successfully."
+
+          Write-Host "IIS Management remote connection, identity, and SSL certificate changes successfully applied."
         } else {
-          Write-Host "SSL certificate not found."
+          Write-Host "SSL certificate not found. Exiting."
           exit 1
         }
-      register: ssl_assign
-      failed_when: ssl_assign.rc != 0
+      retries: 3
+      delay: 15
 
     - name: Start IIS Management Service after applying all configurations
       win_service:
         name: WMSVC
         state: started
+      retries: 3
+      delay: 10
 
     - name: Enable Windows Firewall rule for IIS management if necessary
       win_shell: |
