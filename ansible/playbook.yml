@@ -57,12 +57,12 @@
         } else {
         Write-Host "'login.aspx' already exists in Default Documents for Default Web Site"
         }
-    args:
-      executable: "powershell"
-    register: login_addition
-    failed_when: login_addition.rc != 0
-    retries: 2
-    delay: 10
+      args:
+        executable: "powershell"
+      register: login_addition
+      failed_when: login_addition.rc != 0
+      retries: 2
+      delay: 10
 
     - name: Start DefaultAppPool if not running
       win_shell: |
