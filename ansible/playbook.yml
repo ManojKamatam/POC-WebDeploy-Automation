@@ -93,7 +93,7 @@
 
     - name: Check if SSL certificate exists
       win_shell: |
-        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.DnsName -eq 'office-deployment' }
+        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.DnsNameList -contains 'office-deployment' }
         if ($cert) {
           Write-Host "Certificate already exists: $($cert.Thumbprint)"
           exit 0  # Exit with success if certificate exists
@@ -125,15 +125,14 @@
           # Enable remote management with SSL
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-      
+          
           Write-Host "SSL certificate and remote connection applied successfully."
         } else {
           Write-Host "Certificate not found. Exiting."
           exit 1
-          }
+        }
       retries: 3
       delay: 15
-
 
     - name: Start IIS Management Service after applying all configurations
       win_service:
