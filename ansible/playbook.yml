@@ -115,35 +115,36 @@
     - name: Enable Remote Management, Change Identity, and Select SSL Certificate in One Step
       win_shell: |
         Import-Module WebAdministration
+        # Import the certificate into the Personal store of the computer account
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
 
         if ($cert) {
-        Write-Host "Found the certificate: $($cert.Thumbprint)"
+          Write-Host "Found the certificate: $($cert.Thumbprint)"
 
-          # Stop the Management Service
-          Stop-Service WMSVC
-          Write-Host "Management Service stopped."
+        # Stop the Management Service
+        Stop-Service WMSVC
+        Write-Host "Management Service stopped."
 
-          # Enable remote management
-          $managementSection = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "management"
-          $managementSection.enableRemoteManagement = $true
-          $managementSection | Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management"
-          Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\WebManagement\Server" -Name "EnableRemoteManagement" -Value 1 -Type DWORD
-          Write-Host "Remote management enabled."
+        # Enable remote management
+        $managementSection = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "management"
+        $managementSection.enableRemoteManagement = $true
+        $managementSection | Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management"
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\WebManagement\Server" -Name "EnableRemoteManagement" -Value 1 -Type DWORD
+        Write-Host "Remote management enabled."
 
-          # Change Identity settings
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser         "
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
-          Write-Host "Identity settings applied."
+        # Change Identity settings
+        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser           "
+        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
+        Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+        Write-Host "Identity settings applied."
 
-          # Assign SSL certificate for IIS Management
-          netsh http add sslcert ipport=0.0.0.0:8172 certhash=$cert.Thumbprint appid='{00000000-0000-0000-0000-000000000000}'
-          Write-Host "SSL Certificate assigned to IIS Management."
+        # Assign SSL certificate for IIS Management
+        httpcfg set ssl /i 0.0.0.0:8172 /h $cert.Thumbprint /g "{00000000-0000-0000-0000-000000000000}"
+        Write-Host "SSL Certificate assigned to IIS Management."
 
-          # Start the Management Service
-          Start-Service WMSVC
-          Write-Host "Management Service started."
+        # Start the Management Service
+        Start-Service WMSVC
+        Write-Host "Management Service started."
         } else {
           Write-Host "SSL certificate not found. Exiting."
           exit 1
