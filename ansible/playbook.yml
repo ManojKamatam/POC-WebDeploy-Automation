@@ -117,7 +117,7 @@
       when: cert_check.rc == 1
       delay: 15
 
-     name: Apply IIS Management Changes in a Single Step
+    - name: Apply IIS Management Changes in a Single Step
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
