@@ -117,26 +117,27 @@
       when: cert_check.rc == 1
       delay: 15
 
-    - name: Apply IIS Management Changes Step-by-Step
+    # The critical step for enabling remote management and selecting SSL
+    - name: Apply IIS Management Changes (Remote Connection and SSL)
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
 
         if ($cert) {
           Write-Host "Found the certificate: $($cert.Thumbprint)"
-
-          # 1. Enable remote management (checkbox)
+          
+          # Enable remote management
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
 
-          # 2. Change Identity settings (specific identity - WDeployAdmin)
+          # Change Identity settings
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
 
-          # 3. Assign SSL certificate from the dropdown (using certificate thumbprint)
+          # Assign SSL certificate for IIS Management
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
 
-          Write-Host "IIS Management remote connection, identity, and SSL certificate successfully applied."
+          Write-Host "IIS Management remote connection, identity, and SSL certificate changes successfully applied."
         } else {
           Write-Host "SSL certificate not found. Exiting."
           exit 1
