@@ -86,11 +86,6 @@
           Write-Host "Default Web Site is already running."
         }
 
-    - name: Stop IIS Management Service before identity change
-      win_service:
-        name: WMSVC
-        state: stopped
-
     - name: Enable IIS remote management feature (ensure it is installed)
       win_feature:
         name: "Web-Mgmt-Service"
@@ -126,7 +121,7 @@
           Write-Host "Found the certificate: $($cert.Thumbprint)"
 
           # Stop the Management Service
-          Stop-Service WMSVC
+          Stop-Service WMSVC1
           Write-Host "Management Service stopped."
 
           # Enable remote management
@@ -146,7 +141,7 @@
           Write-Host "SSL Certificate assigned to IIS Management."
 
           # Start the Management Service
-          Start-Service WMSVC
+          Start-Service WMSVC1
           Write-Host "Management Service started."
         } else {
           Write-Host "SSL certificate not found. Exiting."
