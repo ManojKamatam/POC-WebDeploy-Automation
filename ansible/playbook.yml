@@ -151,8 +151,10 @@
       register: firewall_status
       failed_when: firewall_status.rc != 0
 
-    - name: Start IIS Management Service after applying all configurations
-      win_service:
-        name: WMSVC
-        state: started
-      ignore_errors: no
+    - name: Perform IIS Reset to apply changes
+      win_shell: |
+        iisreset
+      register: iisreset_status
+      failed_when: iisreset_status.rc != 0
+      retries: 3
+      delay: 15
