@@ -145,6 +145,13 @@
           $sslCertificateHash = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash"
           Write-Host "SSL Certificate Hash: $sslCertificateHash"
 
+          # Add the certificate to the trusted root certification authorities store
+          $rootStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root", "LocalMachine")
+          $rootStore.Open("ReadWrite")
+          $rootStore.Add($cert)
+          $rootStore.Close()
+          Write-Host "Certificate added to trusted root certification authorities store."
+
           # Start the Management Service
           Start-Service WMSVC
           Write-Host "Management Service started."
