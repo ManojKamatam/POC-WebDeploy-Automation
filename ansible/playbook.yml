@@ -117,7 +117,18 @@
       when: cert_check.rc == 1
       delay: 15
 
-    # The critical step for enabling remote management and selecting SSL
+    - name: Verify SSL Certificate creation
+      win_shell: |
+        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
+        if ($cert) {
+          Write-Host "SSL Certificate confirmed: $($cert.Thumbprint)"
+        } else {
+          Write-Host "SSL Certificate verification failed. Exiting."
+          exit 1
+        }
+      register: ssl_cert_verify
+      failed_when: ssl_cert_verify.rc != 0
+
     - name: Apply IIS Management Changes (Remote Connection and SSL)
       win_shell: |
         Import-Module WebAdministration
@@ -128,20 +139,23 @@
           
           # Enable remote management
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+          Write-Host "Remote management enabled."
 
           # Change Identity settings
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+          Write-Host "Identity settings applied."
 
           # Assign SSL certificate for IIS Management
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-
-          Write-Host "IIS Management remote connection, identity, and SSL certificate changes successfully applied."
+          Write-Host "SSL Certificate assigned to IIS Management."
         } else {
           Write-Host "SSL certificate not found. Exiting."
           exit 1
         }
+      register: ssl_management_step
+      failed_when: ssl_management_step.rc != 0
       retries: 3
       delay: 15
 
@@ -151,12 +165,6 @@
         state: started
       retries: 3
       delay: 10
-
-    - name: Enable Windows Firewall rule for IIS management if necessary
-      win_shell: |
-        netsh advfirewall firewall set rule group="Windows Remote Management" new enable=yes
-      register: firewall_status
-      failed_when: firewall_status.rc != 0
 
     - name: Perform IIS Reset to apply all changes
       win_shell: |
