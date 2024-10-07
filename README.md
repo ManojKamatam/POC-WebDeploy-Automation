@@ -6,7 +6,7 @@
    winrm create winrm/config/Listener?Address=*+Transport=HTTP
 
 3) netstat -an | findstr 5985
-4) Test-NetConnection -ComputerName <public-ip> -Port 5985
+4) Test-NetConnection -ComputerName <public-ip> -Port 5985 *************************** 10
 
 # Test these if unreachable
 
