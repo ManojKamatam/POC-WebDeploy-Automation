@@ -124,9 +124,13 @@
 
         if ($cert) {
           Write-Host "Found the certificate: $($cert.Thumbprint)"
-      
+
+          # Stop the Management Service
+          Stop-Service WMSVC
+          Write-Host "Management Service stopped."
+
           # Enable remote management
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true -Verbose
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
           Write-Host "Remote management enabled."
 
           # Change Identity settings
@@ -138,25 +142,14 @@
           # Assign SSL certificate for IIS Management
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
           Write-Host "SSL Certificate assigned to IIS Management."
+
+          # Start the Management Service
+          Start-Service WMSVC
+          Write-Host "Management Service started."
         } else {
           Write-Host "SSL certificate not found. Exiting."
           exit 1
         }
       register: remote_mgmt
-      retries: 3
-      delay: 15
-
-    - name: Start IIS Management Service after applying all configurations
-      win_service:
-        name: WMSVC
-        state: started
-      retries: 3
-      delay: 10
-
-    - name: Perform IIS Reset to apply all changes
-      win_shell: |
-        iisreset
-      register: iisreset_status
-      failed_when: iisreset_status.rc != 0
       retries: 3
       delay: 15
