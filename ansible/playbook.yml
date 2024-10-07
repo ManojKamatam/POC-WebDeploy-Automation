@@ -117,19 +117,7 @@
       when: cert_check.rc == 1
       delay: 15
 
-    - name: Verify SSL Certificate creation
-      win_shell: |
-        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
-        if ($cert) {
-          Write-Host "SSL Certificate confirmed: $($cert.Thumbprint)"
-        } else {
-          Write-Host "SSL Certificate verification failed. Exiting."
-          exit 1
-        }
-      register: ssl_cert_verify
-      failed_when: ssl_cert_verify.rc != 0
-
-    - name: Apply IIS Management Changes (Remote Connection and SSL)
+    - name: Enable Remote Management, Change Identity, and Select SSL Certificate in One Step
       win_shell: |
         Import-Module WebAdministration
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
@@ -154,8 +142,7 @@
           Write-Host "SSL certificate not found. Exiting."
           exit 1
         }
-      register: ssl_management_step
-      failed_when: ssl_management_step.rc != 0
+      register: remote_mgmt
       retries: 3
       delay: 15
 
