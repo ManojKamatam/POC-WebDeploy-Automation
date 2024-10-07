@@ -138,6 +138,7 @@
         } else {
           Write-Host "Certificate not found. Exiting."
           exit 1
+        }
       retries: 3
       delay: 15
 
