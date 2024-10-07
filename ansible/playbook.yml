@@ -52,13 +52,17 @@
     
         # Check if 'login.aspx' already exists
         if ($defaultDocs.collection.value -notcontains 'login.aspx') {
-            Add-WebConfigurationProperty -pspath $defaultDocsPath -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'}
-            Write-Host "'login.aspx' added to Default Documents for Default Web Site"
-        } else {
-            Write-Host "'login.aspx' already exists in Default Documents for Default Web Site"
-        }
-      args:
-        executable: "powershell"
+          Add-WebConfigurationProperty -pspath $defaultDocsPath -filter "system.webServer/defaultDocument/files" -name "." -value @{value='login.aspx'}
+          Write-Host "'login.aspx' added to Default Documents for Default Web Site"
+      } else {
+        Write-Host "'login.aspx' already exists in Default Documents for Default Web Site"
+      }
+    args:
+      executable: "powershell"
+    register: login_addition
+    failed_when: login_addition.rc != 0
+    retries: 2
+    delay: 10
 
     - name: Start DefaultAppPool if not running
       win_shell: |
@@ -112,7 +116,7 @@
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
         if ($cert) {
           Write-Host "Assigning SSL certificate $($cert.Thumbprint) to IIS Management and applying identity change."
-          
+      
           # Change Identity settings (e.g., set a specific identity if required)
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
@@ -121,14 +125,15 @@
           # Enable remote management with SSL
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-          
+      
           Write-Host "SSL certificate and remote connection applied successfully."
         } else {
           Write-Host "Certificate not found. Exiting."
           exit 1
-        }
+          }
       retries: 3
-      delay: 10
+      delay: 15
+
 
     - name: Start IIS Management Service after applying all configurations
       win_service:
