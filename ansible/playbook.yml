@@ -116,7 +116,7 @@
         $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
         if ($cert) {
           Write-Host "Assigning SSL certificate $($cert.Thumbprint) to IIS Management and applying identity change."
-      
+          
           # Change Identity settings (e.g., set a specific identity if required)
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
@@ -132,29 +132,24 @@
           exit 1
         }
       retries: 3
-      delay: 15
+      delay: 10
 
-    - name: Start IIS Management Service after applying all configurations
+    - name: Check WMSVC status before starting (using win_shell as workaround)
+      win_shell: |
+        $status = Get-Service -Name WMSVC
+        Write-Host "WMSVC Status: $($status.Status)"
+        if ($status.Status -eq 'Stopped') {
+          exit 0
+        } else {
+          exit 1
+        }
+      register: service_status
+      failed_when: service_status.rc not in [0, 1]
+
+    - name: Start WMSVC service if stopped
       win_service:
         name: WMSVC
         state: started
-      ignore_errors: no
-
-    - name: Enable IIS remote management feature (ensure it is installed and enabled)
-      win_feature:
-        name: "Web-Mgmt-Service"
-        state: present
-
-    - name: Enable Windows Firewall rule for IIS management if necessary
-      win_shell: |
-        netsh advfirewall firewall set rule group="Windows Remote Management" new enable=yes
-      register: firewall_status
-      failed_when: firewall_status.rc != 0
-
-    - name: Perform IIS Reset to apply changes
-      win_shell: |
-        iisreset
-      register: iisreset_status
-      failed_when: iisreset_status.rc != 0
+      when: service_status.rc == 0
       retries: 3
       delay: 15
