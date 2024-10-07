@@ -132,20 +132,14 @@
           Write-Host "Remote management enabled."
 
           # Change Identity settings
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser         "
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser           "
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
           Write-Host "Identity settings applied."
 
-          # Bind the SSL certificate to the IIS Management service
-          $binding = Get-WebBinding -Name "WMSVC" -Protocol "https"
-          if (!$binding) {
-            $binding = New-WebBinding -Name "WMSVC" -Protocol "https" -Port 8172 -CertificateThumbprint $cert.Thumbprint
-          } else {
-            $binding.CertificateThumbprint = $cert.Thumbprint
-            $binding | Set-WebBinding
-          }
-          Write-Host "SSL Certificate bound to IIS Management service."
+          # Set the SslCertificateHash property in the registry
+          Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\WebManagement\Server" -Name "SslCertificateHash" -Value $cert.Thumbprint -Type String
+          Write-Host "SslCertificateHash property set in registry."
 
           # Start the Management Service
           Start-Service WMSVC
