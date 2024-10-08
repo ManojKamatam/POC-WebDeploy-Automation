@@ -76,7 +76,7 @@
         }
 
     - name: Ensure Default Web Site is running
-      win_shell: |
+    win_shell: |
         Import-Module WebAdministration
         $site = Get-Website -Name 'Default Web Site'
         if ($site.state -ne 'Started') {
@@ -177,3 +177,4 @@
       register: remote_mgmt
       retries: 3
       delay: 15
+      verbose: true
