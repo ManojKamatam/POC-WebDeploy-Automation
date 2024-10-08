@@ -132,22 +132,21 @@
           Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\WebManagement\Server" -Name "EnableRemoteManagement" -Value 1 -Type DWORD
           Write-Host "Remote management enabled."
 
-          # Change Identity settings
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser           " -Force
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin" -Force
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}" -Force
-          Write-Host "Identity settings applied."
+          # Change Identity settings (e.g., set a specific identity if required)
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser  "
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
 
-          # Assign SSL certificate for IIS Management
-          httpcfg set ssl /i 0.0.0.0:8172 /h $cert.Thumbprint /g "{00000000-0000-0000-0000-000000000000}" -Force
-          Write-Host "SSL Certificate assigned to IIS Management."
-
-          # Start the Management Service
-          Start-Service WMSVC
-          Write-Host "Management Service started."
-        } else {
-              Write-Host "SSL certificate not found. Exiting."
-              exit 1
+          # Enable remote management with SSL
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateStoreName" -value "MY"
+      
+          Write-Host "SSL certificate and remote connection applied successfully."
+        } 
+        else {
+          Write-Host "SSL certificate not found. Exiting."
+          exit 1
         }
       register: remote_mgmt
       retries: 3
