@@ -133,26 +133,19 @@
           Write-Host "Remote management enabled."
 
           # Assign SSL certificate
-          try {
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateStoreName" -value "MY"
-            Write-Host "SSL certificate assigned successfully."
-          } catch {
-              Write-Host "Error assigning SSL certificate: $($Error[0].Message)"
-              exit 1
-          }
+          $certPath = "Cert:\LocalMachine\MY\$($cert.Thumbprint)"
+          $providerPath = "IIS:\SslBindings\0.0.0.0!443"
+          Get-Item $certPath | New-Item $providerPath
+          Write-Host "SSL certificate assigned successfully."
 
           # Change Identity settings
-          try {
-            Import-Module WebAdministration
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser       "
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
-            Write-Host "Identity settings changed successfully."
-          } catch {
-              Write-Host "Error changing identity settings: $($Error[0].Message)"
-            exit 1
-          }
+          Import-Module WebAdministration
+          $pool = Get-Item "IIS:\AppPools\WDeployAdmin"
+          $pool.processModel.userName = "WDeployAdmin"
+          $pool.processModel.password = "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+          $pool | Set-Item
+          Write-Host "Identity settings changed successfully."
+          
           # Apply changes
           Write-Host "Applying changes..."
 
