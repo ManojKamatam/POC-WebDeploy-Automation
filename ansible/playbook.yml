@@ -76,7 +76,7 @@
         }
 
     - name: Ensure Default Web Site is running
-    win_shell: |
+      win_shell: |
         Import-Module WebAdministration
         $site = Get-Website -Name 'Default Web Site'
         if ($site.state -ne 'Started') {
