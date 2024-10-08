@@ -135,7 +135,11 @@
           # Assign SSL certificate
           try {
             $providerPath = "IIS:\SslBindings\0.0.0.0!443"
-            New-WebBinding -Name "Default Web Site" -Protocol https -Port 443 -Certificate $cert
+            $binding = Get-WebBinding -Name "Default Web Site" -Protocol https
+            if ($binding) {
+              Remove-WebBinding -Name "Default Web Site" -Protocol https
+            }
+            New-WebBinding -Name "Default Web Site" -Protocol https -Port 443 -CertificateThumbprint $cert.Thumbprint
             Write-Host "SSL certificate assigned successfully."
           } catch {
             Write-Host "Error assigning SSL certificate: $($Error[0].Message)"
