@@ -116,7 +116,7 @@
       win_shell: |
         Import-Module WebAdministration
         # Import the certificate into the Personal store of the computer account
-        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' }
+        $cert = Get-ChildItem Cert:\\LocalMachine\\My | Where-Object { $_.FriendlyName -eq 'OfficeDeploymentCertificate' } | Sort-Object -Property NotAfter -Descending | Select-Object -First 1
 
         if ($cert) {
           Write-Host "Found the certificate: $($cert.Thumbprint)"
@@ -133,26 +133,26 @@
           Write-Host "Remote management enabled."
 
           # Change Identity settings (e.g., set a specific identity if required)
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser   "
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
-
-          # Verify identity settings
-          $identityType = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType"
-          $userName = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName"
-          if ($identityType -eq "SpecificUser   " -and $userName -eq "WDeployAdmin") {
+          try {
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser    "
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
             Write-Host "Identity settings applied successfully."
-          } else {
-            Write-Host "Identity settings not applied correctly."
+          } catch {
+            Write-Host "Error applying identity settings: $($Error[0].Message)"
             exit 1
           }
 
           # Enable remote management with SSL
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateStoreName" -value "MY"
-      
-          Write-Host "SSL certificate and remote connection applied successfully."
+          try {
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateStoreName" -value "MY"
+            Write-Host "SSL certificate and remote connection applied successfully."
+          } catch {
+            Write-Host "Error enabling remote management with SSL: $($Error[0].Message)"
+            exit 1
+          }
 
           # Start the Management Service
           Start-Service WMSVC
