@@ -133,9 +133,19 @@
           Write-Host "Remote management enabled."
 
           # Change Identity settings (e.g., set a specific identity if required)
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser  "
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser   "
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+
+          # Verify identity settings
+          $identityType = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType"
+          $userName = Get-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName"
+          if ($identityType -eq "SpecificUser   " -and $userName -eq "WDeployAdmin") {
+            Write-Host "Identity settings applied successfully."
+          } else {
+            Write-Host "Identity settings not applied correctly."
+            exit 1
+          }
 
           # Enable remote management with SSL
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
@@ -143,6 +153,10 @@
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateStoreName" -value "MY"
       
           Write-Host "SSL certificate and remote connection applied successfully."
+
+          # Start the Management Service
+          Start-Service WMSVC
+          Write-Host "Management Service started."
         } 
         else {
           Write-Host "SSL certificate not found. Exiting."
