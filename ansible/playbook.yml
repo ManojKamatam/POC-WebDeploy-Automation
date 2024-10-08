@@ -139,7 +139,8 @@
             if ($binding) {
               Remove-WebBinding -Name "Default Web Site" -Protocol https
             }
-            New-WebBinding -Name "Default Web Site" -Protocol https -Port 443 -CertificateThumbprint $cert.Thumbprint
+            $newBinding = New-WebBinding -Name "Default Web Site" -Protocol https -Port 443
+            Set-WebBinding -Name "Default Web Site" -Protocol https -CertificateThumbprint $cert.Thumbprint -Binding $newBinding
             Write-Host "SSL certificate assigned successfully."
           } catch {
             Write-Host "Error assigning SSL certificate: $($Error[0].Message)"
