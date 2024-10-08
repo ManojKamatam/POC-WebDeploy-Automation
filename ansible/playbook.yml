@@ -132,18 +132,12 @@
           Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\WebManagement\Server" -Name "EnableRemoteManagement" -Value 1 -Type DWORD
           Write-Host "Remote management enabled."
 
-          # Assign SSL certificate
+          # Set SSL certificate
           try {
-            $providerPath = "IIS:\SslBindings\0.0.0.0!443"
-            $binding = Get-WebBinding -Name "Default Web Site" -Protocol https
-            if ($binding) {
-              Remove-WebBinding -Name "Default Web Site" -Protocol https
-            }
-            $newBinding = New-WebBinding -Name "Default Web Site" -Protocol https -Port 443
-            Set-WebBinding -Name "Default Web Site" -Protocol https -CertificateThumbprint $cert.Thumbprint -Binding $newBinding
-            Write-Host "SSL certificate assigned successfully."
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/site[@name='Default Web Site']/bindings/binding[@protocol='https']" -name "certificateHash" -value $cert.Thumbprint
+            Write-Host "SSL certificate set successfully."
           } catch {
-            Write-Host "Error assigning SSL certificate: $($Error[0].Message)"
+            Write-Host "Error setting SSL certificate: $($Error[0].Message)"
             exit 1
           }
 
@@ -155,25 +149,12 @@
               Write-Host "DefaultAppPool not found."
               exit 1
             }
-            $pool.processModel.userName = "WDeployAdmin"
-            $pool.processModel.password = "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+            $pool.processModel.userName = ""
+            $pool.processModel.password = ""
+            $pool.processModel.identityType = 3
             $pool | Set-Item
             Write-Host "Identity settings changed successfully."
           } catch {
-            Write-Host "Error changing identity settings: $($Error[0].Message)"
-            exit 1
+              Write-Host "Error changing identity settings: $($Error[0].Message)"
+              exit 1
           }
-          # Apply changes
-          Write-Host "Applying changes..."
-
-          # Start the Management Service
-          Start-Service WMSVC
-          Write-Host "Management Service started."
-        } 
-        else {
-          Write-Host "SSL certificate not found. Exiting."
-          exit 1
-        }
-      register: remote_mgmt
-      retries: 3
-      delay: 15
