@@ -138,9 +138,10 @@
           # Set identity credentials to Windows credentials or IIS Manager credentials
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "identityType" -value 2
 
-          Write-Host "Setting certificateHash to $($cert.Thumbprint)"
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "certificateHash" -value $cert.Thumbprint
-          Write-Host "CertificateHash set to $($cert.Thumbprint)"
+          # Assign the SSL certificate (dropdown action)
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateStoreName" -value "MY"
+          Write-Host "SSL certificate assigned: $($cert.FriendlyName)"
           # Apply changes
           Write-Host "Applying changes..."
 
