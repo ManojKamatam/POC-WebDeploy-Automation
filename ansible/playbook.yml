@@ -139,34 +139,34 @@
             Get-Item $certPath | New-Item $providerPath
             Write-Host "SSL certificate assigned successfully."
           } catch {
-              Write-Host "Error assigning SSL certificate: $($Error[0].Message)"
-              exit 1
+            Write-Host "Error assigning SSL certificate: $($Error[0].Message)"
+            exit 1
           }
 
           # Change Identity settings
           try {
             Import-Module WebAdministration
-            $pool = Get-Item "IIS:\AppPools\WDeployAdmin"
+            $pool = Get-Item "IIS:\AppPools\DefaultAppPool"
             if ($pool -eq $null) {
-              Write-Host "WDeployAdmin application pool not found."
-              exit 1
-          }
-          $pool.processModel.userName = "WDeployAdmin"
-          $pool.processModel.password = "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
-          $pool | Set-Item
-          Write-Host "Identity settings changed successfully."
+            Write-Host "DefaultAppPool not found."
+            exit 1
+            }
+          
+            $pool.processModel.userName = "WDeployAdmin"
+            $pool.processModel.password = "****"
+            $pool | Set-Item
+            Write-Host "Identity settings changed successfully.
           } catch {
-            Write-Host "Error changing identity settings: $($Error[0].Message)"
+              Write-Host "Error changing identity settings: $($Error[0].Message)"
             exit 1
           }
-          
           # Apply changes
           Write-Host "Applying changes..."
 
           # Start the Management Service
           Start-Service WMSVC
           Write-Host "Management Service started."
-          } 
+        } 
         else {
           Write-Host "SSL certificate not found. Exiting."
           exit 1
