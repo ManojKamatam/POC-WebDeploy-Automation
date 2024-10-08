@@ -177,4 +177,3 @@
       register: remote_mgmt
       retries: 3
       delay: 15
-      verbose: true
