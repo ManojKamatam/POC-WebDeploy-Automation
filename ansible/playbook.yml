@@ -132,27 +132,29 @@
           Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\WebManagement\Server" -Name "EnableRemoteManagement" -Value 1 -Type DWORD
           Write-Host "Remote management enabled."
 
-          # Change Identity settings (e.g., set a specific identity if required)
+          # Assign SSL certificate
           try {
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser    "
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
-            Write-Host "Identity settings applied successfully."
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateStoreName" -value "MY"
+            Write-Host "SSL certificate assigned successfully."
           } catch {
-            Write-Host "Error applying identity settings: $($Error[0].Message)"
+            Write-Host "Error assigning SSL certificate: $($Error[0].Message)"
             exit 1
           }
 
-          # Enable remote management with SSL
+          # Change Identity settings
           try {
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "enableRemoteManagement" -value $true
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateHash" -value $cert.Thumbprint
-            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "SslCertificateStoreName" -value "MY"
-            Write-Host "SSL certificate and remote connection applied successfully."
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.identityType" -value "SpecificUser     "
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.userName" -value "WDeployAdmin"
+            Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/sites/siteDefaults/applicationPool" -name "processModel.password" -value "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+            Write-Host "Identity settings changed successfully."
           } catch {
-            Write-Host "Error enabling remote management with SSL: $($Error[0].Message)"
+            Write-Host "Error changing identity settings: $($Error[0].Message)"
             exit 1
           }
+
+          # Apply changes
+          Write-Host "Applying changes..."
 
           # Start the Management Service
           Start-Service WMSVC
