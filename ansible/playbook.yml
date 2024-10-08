@@ -153,6 +153,15 @@
             }
             $pool.processModel.userName = "WDeployAdmin"
             $pool.processModel.password = "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
+            $pool.processModel.idleTimeout = New-TimeSpan -Minutes 20
+            $pool.processModel.idleTimeoutAction = "Terminate"
+            $pool.processModel.loadUserProfile = $false
+            $pool.processModel.maxWorkerProcesses = 1
+            $pool.processModel.pingingEnabled = $true
+            $pool.processModel.pingingMaxResponseTime = New-TimeSpan -Seconds 90
+            $pool.processModel.pingingPeriod = New-TimeSpan -Seconds 30
+            $pool.processModel.shutdownTimeLimit = New-TimeSpan -Seconds 90
+            $pool.processModel.startupTimeLimit = New-TimeSpan -Seconds 90
             $pool | Set-Item
             Write-Host "Identity settings changed successfully."
           } catch {
