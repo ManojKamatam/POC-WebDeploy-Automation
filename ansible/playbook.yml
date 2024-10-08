@@ -134,25 +134,12 @@
 
           # Assign SSL certificate
           try {
-              $certPath = "Cert:\LocalMachine\MY\$($cert.Thumbprint)"
-              $providerPath = "IIS:\SslBindings\0.0.0.0!443"
-              $certThumbprint = $cert.Thumbprint
-              $certHash = $cert.GetCertHash()
-              $certStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("MY", "LocalMachine")
-              $certStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
-              $certCollection = $certStore.Certificates
-              $certCollection | ForEach-Object {
-                if ($_.Thumbprint -eq $certThumbprint) {
-                  $cert = $_
-                }
-            }
-            $certStore.Close()
-            $binding = Get-WebBinding -Name "Default Web Site" -Protocol https
-            $binding.AddSslCertificate($certHash, "MY", "LocalMachine")
+            $providerPath = "IIS:\SslBindings\0.0.0.0!443"
+            New-WebBinding -Name "Default Web Site" -Protocol https -Port 443 -Certificate $cert
             Write-Host "SSL certificate assigned successfully."
           } catch {
-              Write-Host "Error assigning SSL certificate: $($Error[0].Message)"
-              exit 1
+            Write-Host "Error assigning SSL certificate: $($Error[0].Message)"
+            exit 1
           }
 
           # Change Identity settings
