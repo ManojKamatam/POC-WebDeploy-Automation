@@ -145,3 +145,4 @@
 
           # Start the Management Service
           Start-Service WMSVC
+        }
