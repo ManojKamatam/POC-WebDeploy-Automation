@@ -148,16 +148,15 @@
             Import-Module WebAdministration
             $pool = Get-Item "IIS:\AppPools\DefaultAppPool"
             if ($pool -eq $null) {
-            Write-Host "DefaultAppPool not found."
-            exit 1
+              Write-Host "DefaultAppPool not found."
+              exit 1
             }
-          
             $pool.processModel.userName = "WDeployAdmin"
-            $pool.processModel.password = "****"
+            $pool.processModel.password = "{{ lookup('env', 'WEBDEPLOYADMIN_PASSWORD') }}"
             $pool | Set-Item
-            Write-Host "Identity settings changed successfully.
+            Write-Host "Identity settings changed successfully."
           } catch {
-              Write-Host "Error changing identity settings: $($Error[0].Message)"
+            Write-Host "Error changing identity settings: $($Error[0].Message)"
             exit 1
           }
           # Apply changes
