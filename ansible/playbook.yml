@@ -139,7 +139,7 @@
           Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "identityType" -value 2
 
           # Set SSL certificate to WMSVC-SHAZ
-          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "certificateHash" -value "OfficeDeploymentCertificate"
+          Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.applicationHost/management" -name "certificateHash" -value $cert.Thumbprint
           # Apply changes
           Write-Host "Applying changes..."
 
